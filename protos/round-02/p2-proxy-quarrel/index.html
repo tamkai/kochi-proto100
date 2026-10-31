@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>代理口げんか</title>
+<style>
+  :root{
+    --red:#e8323c; --red2:#7a0f16; --blue:#2f7bff; --blue2:#0b2f78;
+    --gold:#ffd23f; --ink:#0d0f17; --mat:#1b2233;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+    background:radial-gradient(ellipse at 50% 35%,#2a3350 0%,#0d0f17 70%);
+    color:#f4f4f8; display:flex; flex-direction:column; min-height:100vh; overflow-x:hidden;
+  }
+  header{display:flex;align-items:center;gap:14px;padding:10px 18px 4px}
+  header h1{margin:0;font-size:22px;letter-spacing:.1em;white-space:nowrap;
+    background:linear-gradient(90deg,var(--red),var(--gold),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
+  .theme{flex:1;display:flex;align-items:center;gap:8px;background:#0006;border:2px solid var(--gold);border-radius:10px;padding:4px 10px}
+  .theme label{color:var(--gold);font-weight:800;font-size:13px;white-space:nowrap}
+  .theme input{flex:1;background:transparent;border:0;color:#fff;font-size:18px;font-weight:700;outline:none;min-width:0}
+  button{font-family:inherit;cursor:pointer;border:0;border-radius:10px;font-weight:800}
+  #gongBtn{background:var(--gold);color:#3a2a00;padding:10px 18px;font-size:16px;box-shadow:0 4px 0 #a07d00;white-space:nowrap}
+  #gongBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #a07d00}
+
+  /* HUD */
+  .hud{display:grid;grid-template-columns:1fr 120px 1fr;gap:10px;align-items:center;padding:6px 18px}
+  .gwrap{position:relative}
+  .gname{font-weight:900;font-size:14px;margin-bottom:3px;display:flex;justify-content:space-between}
+  .hud .b .gname{flex-direction:row-reverse}
+  .gauge{height:22px;background:#000;border:2px solid #fff;border-radius:4px;position:relative;overflow:hidden;transform:skewX(-18deg)}
+  .hud .b .gauge{transform:skewX(18deg)}
+  .gauge .lag,.gauge .fill{position:absolute;top:0;bottom:0;transition:width .25s}
+  .gauge .lag{background:#fff;transition:width 1.1s .35s}
+  .r .gauge .lag,.r .gauge .fill{right:0}
+  .b .gauge .lag,.b .gauge .fill{left:0}
+  .r .fill{background:linear-gradient(180deg,#ff8a8f,var(--red) 50%,var(--red2))}
+  .b .fill{background:linear-gradient(180deg,#9cc2ff,var(--blue) 50%,var(--blue2))}
+  .fill.low{animation:blink .4s infinite}
+  @keyframes blink{50%{filter:brightness(1.8)}}
+  .center{text-align:center}
+  .center .rd{font-size:12px;color:#aab}
+  .center .vs{font-size:30px;font-weight:900;color:var(--gold);text-shadow:0 0 12px #ff9b00}
+
+  /* Ring */
+  .ring{position:relative;flex:1;min-height:330px;margin:4px 18px;display:grid;grid-template-columns:170px 1fr 170px;gap:10px;
+    background:linear-gradient(180deg,#26304a,#1b2233);border-radius:14px;overflow:hidden;
+    box-shadow:inset 0 0 0 4px #0006}
+  .ring::before,.ring::after{content:"";position:absolute;left:0;right:0;height:4px;
+    background:repeating-linear-gradient(90deg,#fff 0 40px,#ddd 40px 44px);opacity:.55;pointer-events:none}
+  .ring::before{top:14px}.ring::after{top:34px}
+  .corner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:46px 8px 10px;position:relative}
+  .corner.r{background:linear-gradient(90deg,#e8323c55,transparent)}
+  .corner.b{background:linear-gradient(270deg,#2f7bff55,transparent)}
+  .post{position:absolute;top:0;bottom:0;width:10px}
+  .corner.r .post{left:0;background:var(--red)}
+  .corner.b .post{right:0;background:var(--blue)}
+  .fighter{font-size:66px;line-height:1;filter:drop-shadow(0 6px 6px #0008);transition:transform .1s}
+  .fighter.hit{animation:hit .45s}
+  .fighter.talk{animation:talk .5s}
+  @keyframes hit{0%{transform:translateX(0)}20%{transform:translateX(-14px) rotate(-12deg)}40%{transform:translateX(12px) rotate(8deg)}60%{transform:translateX(-8px)}100%{transform:none}}
+  @keyframes talk{50%{transform:scale(1.15) translateY(-6px)}}
+  .ptag{font-weight:900;font-size:15px;padding:2px 10px;border-radius:20px}
+  .r .ptag{background:var(--red)}.b .ptag{background:var(--blue)}
+  .ptype{font-size:11px;color:#ccd;text-align:center}
+  .owner{font-size:12px;color:#fff;background:#0006;border-radius:8px;padding:5px 7px;width:100%;text-align:center;word-break:break-all}
+  .owner b{display:block;font-size:10px;color:#aab;font-weight:600}
+
+  .feed{position:relative;overflow-y:auto;padding:46px 6px 12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;max-height:calc(100vh - 330px);min-height:300px}
+  .bub{max-width:82%;padding:9px 13px;border-radius:14px;font-size:15px;line-height:1.55;position:relative;animation:pop .28s ease-out;box-shadow:0 3px 0 #0005}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+  .bub.r{align-self:flex-start;background:#fff;color:#222;border-left:6px solid var(--red)}
+  .bub.b{align-self:flex-end;background:#fff;color:#222;border-right:6px solid var(--blue)}
+  .bub .who{font-size:11px;font-weight:800;margin-bottom:2px}
+  .bub.r .who{color:var(--red)}.bub.b .who{color:var(--blue)}
+  .bub q{quotes:none;background:#ffe9a8;padding:0 2px;border-radius:3px;font-weight:700}
+  .bub .dmg{position:absolute;top:-12px;font-weight:900;font-size:15px;color:var(--gold);text-shadow:0 2px 0 #000,0 0 6px #000}
+  .bub.r .dmg{right:-8px}.bub.b .dmg{left:-8px}
+  .bub.typing{opacity:.75;font-size:20px;letter-spacing:4px;padding:4px 14px}
+  .bub.sys{align-self:center;background:#0008;color:var(--gold);font-size:13px;border:1px dashed var(--gold);max-width:92%;text-align:center}
+  .bub.ref{align-self:center;max-width:94%;background:linear-gradient(135deg,#fff8d6,#ffe27a);color:#3a2a00;border:3px solid var(--gold);text-align:center;font-size:17px}
+  .bub.ref .plan{font-size:21px;font-weight:900;margin:6px 0;line-height:1.45}
+  .bub.ref .who{color:#8a6500}
+  .banner{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(0);font-size:76px;font-weight:900;color:var(--gold);
+    text-shadow:0 5px 0 #a3002a,0 0 30px #ff0;pointer-events:none;white-space:nowrap;z-index:5;transition:transform .3s cubic-bezier(.3,1.8,.5,1)}
+  .banner.on{transform:translate(-50%,-50%) scale(1)}
+
+  /* Controls */
+  :root{--split:50%}
+  .controls{display:grid;grid-template-columns:calc(var(--split) - 25px) 14px minmax(0,1fr);gap:0;padding:8px 18px 14px;transition:grid-template-columns .6s cubic-bezier(.3,1.6,.5,1)}
+  .divider{width:6px;margin:0 4px;border-radius:3px;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+  .wall{position:fixed;top:0;bottom:0;left:var(--split);width:0;border-left:2px dashed #ffd23f66;pointer-events:none;z-index:0;transition:left .6s cubic-bezier(.3,1.6,.5,1)}
+  .pad{min-width:0;overflow:hidden}
+  .pad.squeezed .lbl small,.pad.squeezed button{display:none}
+  .bub.idle{opacity:.92}
+  .pad{border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .pad.r{background:linear-gradient(135deg,#e8323c33,#e8323c11);border:2px solid var(--red)}
+  .pad.b{background:linear-gradient(225deg,#2f7bff33,#2f7bff11);border:2px solid var(--blue)}
+  .pad .lbl{font-size:13px;font-weight:800;display:flex;justify-content:space-between;gap:6px}
+  .pad .lbl small{color:#bbc;font-weight:500}
+  .row{display:flex;gap:8px}
+  .row input{flex:1;min-width:0;font-size:18px;padding:10px 12px;border-radius:9px;border:0;background:#fff;color:#111;font-family:inherit;outline:none}
+  .pad.r input:focus{box-shadow:0 0 0 3px var(--red)}
+  .pad.b input:focus{box-shadow:0 0 0 3px var(--blue)}
+  .pad button{padding:0 16px;color:#fff;font-size:15px}
+  .pad.r button{background:var(--red)}.pad.b button{background:var(--blue)}
+  .flash{animation:flash .6s}
+  @keyframes flash{30%{background:#fff4}}
+
+  @media (max-width:760px){
+    header{flex-wrap:wrap}
+    .theme{order:3;flex-basis:100%}
+    .hud{grid-template-columns:1fr 64px 1fr;padding:6px 10px}
+    .center .vs{font-size:20px}
+    .ring{grid-template-columns:72px 1fr 72px;margin:4px 8px}
+    .fighter{font-size:40px}
+    .ptype,.owner{display:none}
+    .ptag{font-size:11px;padding:2px 5px}
+    .bub{font-size:14px;max-width:94%}
+    .controls{grid-template-columns:1fr !important;padding:8px;gap:8px}
+    .divider,.wall{display:none}
+    .banner{font-size:44px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>代理口げんか</h1>
+  <div class="theme"><label>お題</label><input id="theme" value="合宿の夕飯はカツオのタタキか、皿鉢料理か"></div>
+  <button id="gongBtn">🔔 ゴング！</button>
+</header>
+
+<div class="hud">
+  <div class="gwrap r"><div class="gname"><span>🟥 赤コーナー ロジ代理</span><span id="rNum">100</span></div>
+    <div class="gauge"><div class="lag" id="rLag" style="width:100%"></div><div class="fill" id="rFill" style="width:100%"></div></div></div>
+  <div class="center"><div class="rd" id="round">ROUND -</div><div class="vs">VS</div></div>
+  <div class="gwrap b"><div class="gname"><span>エモ代理 青コーナー 🟦</span><span id="bNum">100</span></div>
+    <div class="gauge"><div class="lag" id="bLag" style="width:100%"></div><div class="fill" id="bFill" style="width:100%"></div></div></div>
+</div>
+
+<div class="ring">
+  <div class="corner r"><div class="post"></div>
+    <div class="fighter" id="rF">🧐</div><div class="ptag">ロジ代理</div>
+    <div class="ptype">理屈で丁寧に詰める</div>
+    <div class="owner"><b>赤の主の主張</b><span id="rOwn">—</span></div></div>
+  <div class="feed" id="feed"></div>
+  <div class="corner b"><div class="post"></div>
+    <div class="fighter" id="bF">🥹</div><div class="ptag">エモ代理</div>
+    <div class="ptype">情に訴えて話を大きくする</div>
+    <div class="owner"><b>青の主の主張</b><span id="bOwn">—</span></div></div>
+  <div class="banner" id="banner">K.O.</div>
+</div>
+
+<div class="wall" id="wall"></div>
+<div class="controls">
+  <div class="pad r" id="rPad"><div class="lbl">🟥 赤の主（キーボード左側の人） <small>Shift+Enter で投げ込む</small></div>
+    <div class="row"><input id="rIn" value="カツオのタタキは藁焼きの香りが最高だから一択"><button id="rBtn">投げ込む</button></div></div>
+  <div class="divider"></div>
+  <div class="pad b" id="bPad"><div class="lbl">🟦 青の主（キーボード右側の人） <small>Enter で投げ込む</small></div>
+    <div class="row"><input id="bIn" value="皿鉢料理はみんな好きだから、みんなで囲めば絶対盛り上がる"><button id="bBtn">投げ込む</button></div></div>
+</div>
+
+<script>
+// ===== 音（Web Audio 合成） =====
+let AC = null;
+function audio(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC && AC.state==='suspended') AC.resume(); return AC; }
+function noiseBuf(ac,dur){ const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length); return b; }
+function sfxHit(power){
+  const ac=audio(); if(!ac) return; const t=ac.currentTime;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(160+power*2,t); o.frequency.exponentialRampToValueAtTime(40,t+.18);
+  g.gain.setValueAtTime(.7,t); g.gain.exponentialRampToValueAtTime(.001,t+.25);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.3);
+  const n=ac.createBufferSource(), f=ac.createBiquadFilter(), ng=ac.createGain();
+  n.buffer=noiseBuf(ac,.12); f.type='bandpass'; f.frequency.value=1800; ng.gain.value=.5+power/60;
+  n.connect(f).connect(ng).connect(ac.destination); n.start(t);
+}
+function sfxGong(times){
+  const ac=audio(); if(!ac) return;
+  for(let k=0;k<(times||1);k++){
+    const t=ac.currentTime+k*.45;
+    [1,2.4,2.98,4.1,5.4].forEach((m,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.value=310*m; g.gain.setValueAtTime(.22/(i+1),t); g.gain.exponentialRampToValueAtTime(.0005,t+1.8-i*.2);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t+2);
+    });
+  }
+}
+function sfxBlip(hi){
+  const ac=audio(); if(!ac) return; const t=ac.currentTime;
+  const o=ac.createOscillator(), g=ac.createGain(); o.type='square';
+  o.frequency.setValueAtTime(hi?880:520,t); o.frequency.setValueAtTime(hi?1320:780,t+.06);
+  g.gain.setValueAtTime(.06,t); g.gain.exponentialRampToValueAtTime(.001,t+.14);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.15);
+}
+function sfxCheer(){
+  const ac=audio(); if(!ac) return; const t=ac.currentTime;
+  [523,659,784,1047].forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='triangle'; o.frequency.value=f;
+    g.gain.setValueAtTime(0,t+i*.12); g.gain.linearRampToValueAtTime(.15,t+i*.12+.02); g.gain.exponentialRampToValueAtTime(.001,t+i*.12+.6);
+    o.connect(g).connect(ac.destination); o.start(t+i*.12); o.stop(t+i*.12+.7); });
+}
+['click','keydown'].forEach(ev=>document.addEventListener(ev,()=>audio(),{once:true}));
+
+// ===== 言葉の切り貼り =====
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const strip=s=>(s||'').trim().replace(/[。．.！!？?\s]+$/,'');
+const SPLIT=/(?:(?:は|が|を|に|で|と|も)(?![ぁ-ゖー])|より|から|って|けど|ので|なら|、|，|,|\s)+/;
+function frags(s){ s=strip(s); const p=s.split(SPLIT).filter(x=>x.length>=2); return p.length?p:[s]; }
+function pick2(s){ const f=frags(s); const a=rnd(f); const rest=f.filter(x=>x!==a); return [a, rest.length?rnd(rest):a]; }
+function cutPoint(s){
+  const re=/、|，|,|(?:は|が|を)(?![ぁ-ゖー])|けど|から|ので|なら/g; let m, best=null, mid=s.length/2;
+  while((m=re.exec(s))){ if(m.index>0 && m.index<s.length-1){ if(!best || Math.abs(m.index-mid)<Math.abs(best.i-mid)) best={i:m.index,len:m[0].length}; } }
+  return best;
+}
+function latter(s){ s=strip(s); const c=cutPoint(s); return c? s.slice(c.i+c.len).replace(/^[、，,]/,'') : s.slice(Math.floor(s.length/2)); }
+function former(s){ s=strip(s); const c=cutPoint(s); return c? s.slice(0,c.i) : s.slice(0,Math.ceil(s.length/2)); }
+function invert(s){ // 語順を入れ替える（倒置）
+  s=strip(s); let t=s.split(/(?<=は|が|を|から|ので|けど|なら|、|，)/).map(x=>x.replace(/[、，]$/,'')).filter(Boolean);
+  if(t.length<2){ const h=Math.ceil(s.length/2); t=[s.slice(0,h),s.slice(h)]; }
+  return t.reverse().join('、');
+}
+function exaggerate(s){
+  s=strip(s); const f=rnd(frags(s));
+  return rnd([
+    `${s}。いや、${s}以外はすべて誤差です`,
+    `${s}——しかも全宇宙規模で`,
+    `${s}！${f}！${f}！`,
+    `${s}、と百年後の教科書にも書いてある`,
+    `${s}。異論は認めますが採用しません`,
+    `控えめに言って${s}`,
+  ]);
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 『』の中はハイライト
+const deco=s=>esc(s).replace(/『(.*?)』/g,'<q>『$1』</q>');
+
+// ===== 代理人のテンプレート =====
+const TPL={
+  r:[ // ロジ代理: 理屈っぽく丁寧に詰める
+    "『{q}』？ その『{q}』の定義を、まず伺ってもよろしいですか。",
+    "失礼ですが、『{qh}』には根拠が一つも添えられていません。一方、我が主は「{mi}」と申しております。",
+    "整理しましょう。第一に{mf}。第二に{mf2}。第三に、『{q}』は論点のすり替えです。",
+    "『{q}』と仰いましたね。議事録に太字で残しておきます。",
+    "仮に『{qh}』だとしましょう。では{mf}の件はどう説明されますか。",
+    "我が主の主張を正確に申し上げます。「{me}」。以上です。反論は文書でお願いします。",
+    "『{q}』のうち『{q2}』の部分、統計的に有意ですか？",
+    "感情論は結構です。『{q}』を三回唱えても、{mf}にはなりません。",
+    "確認ですが『{qh}』——それはご自身の意見ですか、それとも『みんな』の意見ですか。その『みんな』に私は入っていますか。",
+    "お言葉ですが、『{q}』より{mf}のほうが、少なくとも再現性があります。",
+    "「{theme}」という問いに対し、我が主は既に「{me}」と結論を出しております。",
+    "『{q}』。その一語で、この会議は三十分延びました。",
+    "スライドにまとめると一枚です。「{mi}」。以上、ご清聴ありがとうございました。",
+    "『{q2}』と『{q}』、論理的に両立しませんね。どちらを取り下げますか。",
+  ],
+  b:[ // エモ代理: 情に訴えてすぐ話を大きくする
+    "『{q}』？！ そんな冷たい言葉で、{mf}の思い出を踏みにじるんですか！",
+    "聞いてください、うちの主はね、「{mi}」って……涙ながらに言ったんですよ！",
+    "『{q}』とか言ってる場合じゃない！ これはもう「{theme}」どころの話じゃない、人類の問題です！",
+    "『{qh}』？ 理屈はもういい！ {mf}——それが全てでしょう！",
+    "想像してください。十年後、みんなが『あの夜は{mf}だったね』と語り合う姿を！",
+    "あなたが『{q}』って言った瞬間、この会議室の温度が3度下がりました！",
+    "{me}！！ 大事なことなので魂で言いました！",
+    "あなたの『{q}』には、心がない！ データはあっても、愛がない！",
+    "『{q2}』ですって？ うちの主の地元では、それを『寂しさ』と呼ぶんです！",
+    "いいですか、{mf}は単なる{mf2}じゃない。生き方なんです！",
+    "『{qh}』……ふっ、その言葉、未来の自分に胸を張って言えますか！",
+    "地球の裏側でも、きっと誰かが「{mi}」と叫んでいます！",
+    "『{q}』？ 私、いま泣いてます。{mf}のために泣いてます！",
+    "全米が、いや全宇宙が{mf}を待っている！ 『{q}』なんて誰も待ってない！",
+  ]
+};
+const INJ={
+  r:["……主から追加の指示が入りました。『{new}』。了解、方針を修正します。つまり「{ni}」です。",
+     "訂正します。正しくは『{new}』。先ほどまでの発言は、すべてこのための伏線でした。",
+     "主より新資料『{new}』が提出されました。これにより『{q}』は論破済みとなります。"],
+  b:["えっ、主が今『{new}』って！？ 聞きましたか皆さん！ 方針変更！ {ne}！",
+     "主の叫びが届きました……『{new}』！！ もう『{q}』なんてどうでもいい！",
+     "これだ……これが言いたかったんだ！『{new}』！ 会場の皆さん、拍手を！"]
+};
+const REF=[
+  (s)=>`${former(s.r)}けど、${latter(s.b)}。`,
+  (s)=>`${former(s.b)}けど、${latter(s.r)}。`,
+  (s)=>`${latter(s.r)}し、${latter(s.b)}。`,
+  (s)=>s.A&&s.B?`${s.B}の真ん中に、${s.A}を置く。`:`『${rnd(frags(s.r))}』を『${rnd(frags(s.b))}』でやる。`,
+  (s)=>s.A&&s.B?`${s.A}も${s.B}も、半分ずつ。ただし『${rnd(frags(s.r))}』と『${rnd(frags(s.b))}』は両方守る。`:`『${rnd(frags(s.b))}』ために『${rnd(frags(s.r))}』。`,
+  (s)=>`『${rnd(frags(s.r))}』で始めて、『${rnd(frags(s.b))}』で締める。`,
+];
+const deck={r:[],b:[],ref:[]};
+function draw(key,arr){ if(!deck[key].length) deck[key]=arr.map((_,i)=>i).sort(()=>Math.random()-.5); return arr[deck[key].pop()]; }
+function fill(t,m){ return t.replace(/\{(\w+)\}/g,(_,k)=>m[k]!==undefined?m[k]:''); }
+
+function parseTheme(t){
+  t=strip(t);
+  let m=t.match(/^(?:.*?は)?(.+?)か[、,，\s]*(.+?)か$/);
+  if(m) return {A:m[1].trim(),B:m[2].trim()};
+  m=t.split(/\s*(?:vs|VS|対|or|／|\/)\s*/);
+  if(m.length>=2) return {A:m[0].replace(/^.*?は/,''),B:m[1]};
+  return {A:'',B:''};
+}
+
+function speak(side){
+  const me=claims[side], opp=claims[side==='r'?'b':'r'];
+  const [q,q2]=pick2(opp), [mf,mf2]=pick2(me);
+  const base={q,q2,qh:latter(opp),mf,mf2,me:exaggerate(me),mi:invert(me),theme:strip($('theme').value)};
+  if(pending[side]){
+    const nw=pending[side]; pending[side]=null;
+    return {text:fill(rnd(INJ[side]),{...base,new:strip(nw),ni:invert(nw),ne:exaggerate(nw)}),boost:true};
+  }
+  return {text:fill(draw(side,TPL[side]),base),boost:false};
+}
+
+// ===== 画面 =====
+const $=id=>document.getElementById(id);
+const feed=$('feed');
+const NAME={r:'ロジ代理（赤）',b:'エモ代理（青）'};
+let claims={r:'',b:''}, pending={r:null,b:null}, hp={r:100,b:100}, running=false, battleId=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function bubble(cls,html){ const d=document.createElement('div'); d.className='bub '+cls; d.innerHTML=html; feed.appendChild(d); feed.scrollTop=feed.scrollHeight; return d; }
+function setHP(side){
+  const v=Math.max(0,hp[side]);
+  $(side+'Fill').style.width=v+'%'; $(side+'Lag').style.width=v+'%'; $(side+'Num').textContent=Math.round(v);
+  $(side+'Fill').classList.toggle('low',v<=25);
+  pushWall();
+}
+// ===== ページの奪い合い（仕切り線・タブ名） =====
+let bias=0;
+function pushWall(){
+  const sp=Math.max(10,Math.min(90,50+(Math.max(0,hp.r)-Math.max(0,hp.b))*0.42+bias));
+  document.documentElement.style.setProperty('--split',sp+'%');
+  $('rPad').classList.toggle('squeezed',sp<28); $('bPad').classList.toggle('squeezed',sp>72);
+}
+function grabTitle(side){ document.title=side==='r'?'🟥 赤が正しい｜代理口げんか':'🟦 青が正しい｜代理口げんか'; }
+// ===== 声（ブラウザ内蔵の読み上げ） =====
+function say(text,side){
+  try{
+    const ss=window.speechSynthesis; if(!ss) return;
+    ss.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/[『』「」★]/g,'').slice(0,90));
+    u.lang='ja-JP';
+    if(side==='r'){u.pitch=.7;u.rate=1.15;} else if(side==='b'){u.pitch=1.6;u.rate=1.3;} else {u.pitch=1;u.rate=1;}
+    ss.speak(u);
+  }catch(e){}
+}
+function showOwners(){ $('rOwn').textContent=claims.r; $('bOwn').textContent=claims.b; }
+function anim(el,c){ el.classList.remove(c); void el.offsetWidth; el.classList.add(c); }
+function banner(txt){ const b=$('banner'); b.textContent=txt; b.classList.add('on'); setTimeout(()=>b.classList.remove('on'),1400); }
+
+async function battle(){
+  const id=++battleId; running=true;
+  feed.innerHTML=''; bias=0; idleOn=false; hp={r:100,b:100}; setHP('r'); setHP('b');
+  claims.r=strip($('rIn').value)||'カツオのタタキは藁焼きの香りが最高だから一択';
+  claims.b=strip($('bIn').value)||'皿鉢料理はみんな好きだから、みんなで囲めば絶対盛り上がる';
+  pending={r:null,b:null}; showOwners();
+  $('rIn').value=''; $('bIn').value='';
+  $('rIn').placeholder='途中で一言投げ込む（例: 冷めてもおいしい）';
+  $('bIn').placeholder='途中で一言投げ込む（例: 見た目が祭りだ）';
+  sfxGong(1); banner('FIGHT!');
+  bubble('sys',`お題「${esc(strip($('theme').value))}」——両代理人、主の言葉を背負ってリングへ。`);
+  await sleep(1300);
+  const turns=8; let order=Math.random()<.5?['r','b']:['b','r'];
+  for(let i=0;i<turns;i++){
+    if(id!==battleId) return;
+    const side=order[i%2], foe=side==='r'?'b':'r';
+    $('round').textContent=`ROUND ${Math.floor(i/2)+1} / 4`;
+    const ty=bubble(side+' typing','…'); sfxBlip(side==='b');
+    await sleep(650+Math.random()*400); if(id!==battleId) return; ty.remove();
+    const {text,boost}=speak(side);
+    const d=bubble(side,`<div class="who">${NAME[side]}${boost?' ★主の一言で覚醒':''}</div>${deco(text)}`);
+    anim($(side+'F'),'talk'); say(text,side); grabTitle(side);
+    await sleep(700); if(id!==battleId) return;
+    // 言い負かされた側のメンツが減る（引用が多いほど痛い）
+    const quotes=(text.match(/『/g)||[]).length;
+    let dmg=8+Math.floor(Math.random()*12)+quotes*3+(boost?10:0);
+    const crit=Math.random()<.18; if(crit) dmg=Math.round(dmg*1.8);
+    hp[foe]-=dmg; setHP(foe); sfxHit(dmg); anim($(foe+'F'),'hit');
+    const tag=document.createElement('span'); tag.className='dmg'; tag.textContent=(crit?'会心！ ':'')+'メンツ -'+dmg; d.appendChild(tag);
+    if(hp[foe]<=0) break;
+    await sleep(1500);
+  }
+  if(id!==battleId) return;
+  await finish(id);
+}
+
+async function finish(id){
+  const ko=hp.r<=0||hp.b<=0;
+  const loser=hp.r<hp.b?'r':'b', winner=loser==='r'?'b':'r';
+  sfxGong(3); banner(ko?'K.O.':'判定');
+  bubble('sys',`${ko?'K.O.！':'時間切れ判定！'} 勝者: ${NAME[winner]}（メンツ残り ${Math.max(0,Math.round(hp[winner]))}）`);
+  await sleep(1800); if(id!==battleId) return;
+  const ty=bubble('ref typing','⚖️ …'); await sleep(1200); if(id!==battleId) return; ty.remove();
+  const th=parseTheme($('theme').value);
+  const plan=draw('ref',REF)({r:claims.r,b:claims.b,A:th.A,B:th.B});
+  bubble('ref',`<div class="who">⚖️ レフェリーAI の和解案</div>
+    <div class="plan">「${esc(plan)}」</div>
+    <div style="font-size:13px">赤の言葉と青の言葉を、混ぜておきました。</div>
+    <div style="margin-top:8px"><button id="again" style="background:#3a2a00;color:#ffe27a;padding:8px 16px;font-size:14px">🔔 同じ主張で再戦（毎回ちがう応酬）</button></div>`);
+  sfxCheer(); say('和解案。'+plan,'ref'); document.title='⚖️ 和解｜代理口げんか';
+  await sleep(900); if(id!==battleId) return;
+  const lines=[`……${rnd(['悔しいけど','認めたくないですが','理屈の上では','計算上は'])}、それでいいです。`,`……${rnd(['なんで泣けるんだろう','それ、最初から言ってほしかった','ぐうの音も出ない','負けたのに勝った気分'])}！`];
+  bubble('r',`<div class="who">${NAME.r}</div>${esc(lines[0])}`);
+  await sleep(700); if(id!==battleId) return;
+  bubble('b',`<div class="who">${NAME.b}</div>${esc(lines[1])}`);
+  running=false; idleAt=Date.now()+14000; idleOn=true;
+  $('again').onclick=()=>{ $('rIn').value=claims.r; $('bIn').value=claims.b; battle(); };
+}
+
+function inject(side){
+  const inp=$(side+'In'), v=strip(inp.value);
+  if(!running){ battle(); return; }
+  if(!v) return;
+  pending[side]=v; claims[side]=v; showOwners(); inp.value='';
+  anim($(side+'Pad'),'flash'); sfxBlip(side==='b');
+  bubble('sys',`${side==='r'?'🟥 赤':'🟦 青'}の主が投げ込んだ！ 『${esc(v)}』`);
+}
+$('rBtn').onclick=()=>inject('r');
+$('bBtn').onclick=()=>inject('b');
+$('rIn').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.shiftKey&&!e.isComposing){ e.preventDefault(); inject('r'); } });
+$('bIn').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); inject('b'); } });
+$('gongBtn').onclick=()=>{ if(running){ $('rIn').value=$('rIn').value||claims.r; $('bIn').value=$('bIn').value||claims.b; } battle(); };
+
+// ===== 第四の壁: 開いた直後から、画面の前の人をネタに勝手に口げんか =====
+const T0=Date.now(); let idleOn=true, idleAt=Date.now()+700, mouse={x:-1,y:-1,side:null,moved:Date.now()}, lastSide=null, idleDeck=[];
+const now=()=>{const d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');};
+const secs=()=>Math.round((Date.now()-T0)/1000);
+const th=()=>strip($('theme').value);
+const IDLE=[
+  ['r',()=>`${now()} に口げんかを見に来る人間、暇ですね。`],
+  ['b',()=>`暇じゃない！ この人は ${now()} という貴重な時間を、私たちに捧げてくれたんです！`],
+  ['r',()=>`開いてから ${secs()} 秒。まだゴングが押されていません。慎重な方のようです。`],
+  ['b',()=>`押して！ 上の黄色いゴング、押して！ もう待てない！`],
+  ['r',()=>`お題「${th()}」。我が主が正しい前提で進めてよろしいですね。`],
+  ['b',()=>`よろしくない！ 画面の前のあなた、青の味方ですよね？ 目を見ればわかります！`],
+  ['r',()=>`このタブの名前、さっきから私のものです。ご確認ください。`],
+  ['b',()=>`タブ名なんか取ったって、心までは取れない！`],
+  ['r',()=>`中央の仕切り線、こちらの方が広く見えるのは論理の重みです。`],
+  ['b',()=>`ちょっと！ 線をこっちに押してこないで！ 私の入力欄が苦しい！`],
+];
+const LEAN={
+  r:[['b','今、赤のほうにカーソル寄せましたね？ 審判買収ですか！'],['r','賢明なご判断です。こちら側の空気は論理的で澄んでいます。'],['b',()=>`${now()}、赤への寝返りを確認。一生忘れません！`]],
+  b:[['r','今、青のほうへカーソルを寄せましたね。記録しました。審判買収の疑いがあります。'],['b','ほら来てくれた！ この人は心で選んだんです！'],['r',()=>`${now()} 時点で、あなたの手首は感情に流されています。`]],
+};
+function idleLine(side,t){
+  t=typeof t==='function'?t():t;
+  const d=bubble(side+' idle',`<div class="who">${NAME[side]}</div>${esc(t)}`);
+  anim($(side+'F'),'talk'); sfxBlip(side==='b'); say(t,side); grabTitle(side);
+  while(feed.children.length>40) feed.firstChild.remove();
+  idleAt=Date.now()+3200;
+}
+document.addEventListener('mousemove',e=>{
+  mouse.x=e.clientX; mouse.y=e.clientY; mouse.moved=Date.now();
+  const s=e.clientX<innerWidth*0.42?'r':e.clientX>innerWidth*0.58?'b':null;
+  if(s) mouse.side=s;
+});
+setInterval(()=>{
+  if(!idleOn || running) return;
+  const t=Date.now();
+  if(mouse.side && mouse.side!==lastSide && t>idleAt-2000){ // カーソルが片側に寄った
+    lastSide=mouse.side; const L=LEAN[mouse.side];
+    const [sd,tx]=L[Math.floor(Math.random()*L.length)];
+    bias=Math.max(-15,Math.min(15,bias+(mouse.side==='r'?6:-6))); pushWall();
+    idleLine(sd,tx); return;
+  }
+  if(t<idleAt) return;
+  if(t-mouse.moved>9000 && mouse.x>=0 && Math.random()<.5){ idleLine('r',`カーソルが ${Math.round((t-mouse.moved)/1000)} 秒止まっています。寝ていますか。議事録上は『欠席』です。`); return; }
+  if(!idleDeck.length) idleDeck=IDLE.slice();
+  const [sd,tx]=idleDeck.shift();
+  bias=Math.max(-15,Math.min(15,bias+(sd==='r'?3:-3))); pushWall();
+  idleLine(sd,tx);
+},400);
+document.addEventListener('pointerdown',()=>{ try{ speechSynthesis.cancel(); }catch(e){} },{once:true});
+
+// 開いた直後: 説明を出しておく（ゴングで開始）
+bubble('sys','左右に座って、自分の主張を一言。🔔ゴングで代理人どうしの口げんかが始まります。途中で一言投げ込むと、代理人が方針を変えます。');
+</script>
+</body>
+</html>

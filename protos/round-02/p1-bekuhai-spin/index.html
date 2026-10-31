@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>べく杯ルーレット ― AI 場まわし係</title>
+<style>
+:root{
+  --shu:#c8322b; --shu2:#e2513f; --urushi:#1b1210; --urushi2:#2e1d18;
+  --tatami:#b9c27a; --tatami2:#a3ad62; --kin:#d9a83a; --kami:#fbf3df;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif;
+  color:var(--urushi);
+  background:
+    repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 2px,transparent 2px 7px),
+    linear-gradient(var(--tatami),var(--tatami2));
+  overflow-x:hidden; user-select:none; -webkit-user-select:none;
+}
+button{font-family:inherit;cursor:pointer}
+.hdr{display:flex;align-items:center;gap:14px;padding:8px 18px;background:var(--urushi);color:var(--kami);border-bottom:5px solid var(--shu)}
+.hdr h1{font-size:22px;letter-spacing:.12em}
+.hdr h1 b{color:var(--kin)}
+.hdr small{opacity:.75;font-size:13px}
+.hdr .sp{flex:1}
+.hbtn{background:transparent;border:1px solid var(--kin);color:var(--kin);border-radius:20px;padding:4px 12px;font-size:13px}
+
+/* ---- 席登録 ---- */
+#setup{max-width:860px;margin:22px auto;padding:22px 26px;background:var(--kami);border:6px solid var(--urushi);border-radius:16px;box-shadow:0 0 0 4px var(--shu),0 12px 30px rgba(0,0,0,.3)}
+#setup h2{font-size:26px;margin-bottom:4px}
+#setup p.lead{font-size:15px;margin-bottom:14px;line-height:1.6}
+.row{display:flex;gap:10px;align-items:center;margin:8px 0}
+.row select{font-size:18px;padding:6px;border:2px solid var(--urushi);border-radius:8px;background:#fff;font-family:inherit}
+.row input{flex:1;font-size:18px;padding:8px 10px;border:2px solid var(--urushi);border-radius:8px;font-family:inherit}
+.row .del{border:none;background:var(--urushi2);color:#fff;border-radius:50%;width:34px;height:34px;font-size:18px}
+.row .q{font-size:22px;color:var(--shu)}
+.setbtns{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.big{font-size:22px;padding:12px 30px;border:none;border-radius:40px;background:var(--shu);color:#fff;box-shadow:0 5px 0 #7d1a15;letter-spacing:.1em}
+.big:active{transform:translateY(3px);box-shadow:0 2px 0 #7d1a15}
+.sub{font-size:16px;padding:9px 18px;border:2px solid var(--urushi);border-radius:30px;background:#fff}
+.note{font-size:13px;opacity:.7;margin-top:10px}
+
+/* ---- 座敷 ---- */
+#game{display:none;gap:16px;padding:12px 16px;justify-content:center;align-items:flex-start}
+#board{position:relative;width:min(94vw,calc(100vh - 90px),760px);aspect-ratio:1;touch-action:none;flex:none}
+#zen{position:absolute;inset:13%;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#4a2e25,var(--urushi) 65%);
+  box-shadow:0 0 0 10px var(--shu),0 0 0 14px var(--urushi),0 18px 40px rgba(0,0,0,.45),inset 0 0 40px rgba(0,0,0,.6)}
+#pegs{position:absolute;inset:13%;pointer-events:none}
+#koma{position:absolute;left:50%;top:50%;width:62%;height:62%;transform:translate(-50%,-50%) rotate(0deg);filter:drop-shadow(0 10px 10px rgba(0,0,0,.5));cursor:grab}
+.hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--kami);font-size:15px;pointer-events:none;text-align:center;opacity:.0;transition:opacity .4s;text-shadow:0 2px 4px #000}
+.seat{position:absolute;width:0;height:0}
+.seat .lab{position:absolute;left:0;top:0;transform-origin:0 0;width:200px;margin-left:-100px;text-align:center;
+  background:var(--kami);border:3px solid var(--urushi);border-radius:14px;padding:6px 8px 7px;box-shadow:0 4px 0 rgba(0,0,0,.25);transition:background .3s,transform .3s}
+.seat .nm{font-size:24px;font-weight:bold;letter-spacing:.05em}
+.seat .it{font-size:13px;line-height:1.3;margin-top:2px}
+.seat .ct{font-size:14px;color:var(--shu);margin-top:3px;min-height:18px;letter-spacing:.1em}
+.seat.hit .lab{background:#ffe08a;border-color:var(--shu);box-shadow:0 0 0 5px var(--shu),0 0 30px #ffd34d}
+
+/* ---- 結果 ---- */
+#result{position:absolute;left:50%;top:50%;width:84%;transform:translate(-50%,-50%) rotate(0deg) scale(.3);opacity:0;pointer-events:none;transition:transform .45s cubic-bezier(.2,1.6,.4,1),opacity .3s;z-index:5}
+#result.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1)}
+.card{background:var(--kami);border:6px solid var(--urushi);border-radius:22px;padding:14px 18px 16px;box-shadow:0 0 0 5px var(--shu),0 20px 50px rgba(0,0,0,.55);text-align:center}
+.cuprow{display:flex;align-items:center;justify-content:center;gap:12px}
+.cuprow svg{width:96px;height:96px}
+.cupname{font-size:34px;font-weight:bold;color:var(--shu);letter-spacing:.08em}
+.cupfx{font-size:14px}
+.mc{display:flex;gap:10px;align-items:flex-start;margin-top:8px;text-align:left}
+.mcface{flex:none;width:56px;height:56px;border-radius:50%;background:var(--urushi);color:#ff6b5a;font-size:13px;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1.1;border:3px solid var(--kin)}
+.mcface i{font-style:normal;font-size:20px}
+.bubble{position:relative;flex:1;background:#fff;border:3px solid var(--urushi);border-radius:16px;padding:10px 14px;font-size:clamp(17px,2.6vw,25px);font-weight:bold;line-height:1.45;font-family:"Hiragino Sans","Yu Gothic",sans-serif}
+.bubble:before{content:"";position:absolute;left:-14px;top:16px;border:8px solid transparent;border-right:8px solid var(--urushi)}
+.bubble .cb{display:block;font-size:.72em;color:var(--shu);margin-bottom:4px}
+.bubble q{quotes:none;color:#8a1f19;background:linear-gradient(transparent 60%,#ffe08a 60%)}
+.rbtns{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.sake{font-size:12px;opacity:.65;margin-top:6px}
+
+/* ---- 帳面 ---- */
+#side{width:300px;max-height:calc(100vh - 90px);overflow:auto;background:var(--kami);border:4px solid var(--urushi);border-radius:12px;padding:10px 12px;box-shadow:0 0 0 3px var(--shu)}
+#side h3{font-size:18px;border-bottom:2px solid var(--shu);padding-bottom:4px;margin-bottom:6px}
+#log{list-style:none;font-size:13px;line-height:1.45}
+#log li{padding:6px 0;border-bottom:1px dashed #b9a47a}
+#log li b{color:var(--shu)}
+#log .empty{opacity:.6}
+.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(255,220,120,.6),transparent 60%);opacity:0;transition:opacity .5s;z-index:9}
+.conf{position:fixed;font-size:26px;pointer-events:none;z-index:10;animation:fall 1.6s ease-in forwards}
+@keyframes fall{to{transform:translateY(70vh) rotate(540deg);opacity:0}}
+/* ---- 開幕・割り込み ---- */
+.ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:radial-gradient(circle at 50% 45%,#4a2e25,#120b09 75%);color:var(--kami);text-align:center;perspective:700px;overflow:hidden}
+.ov h2{font-size:clamp(22px,4vw,34px);letter-spacing:.2em;color:var(--kin)}
+#ikomaWrap{position:relative;width:min(56vh,70vw);aspect-ratio:1}
+#ikoma{width:100%;height:100%;filter:drop-shadow(0 12px 14px #000)}
+#jump{position:absolute;left:50%;top:50%;width:30%;transform:translate(-50%,40%) scale(.2);opacity:0;pointer-events:none}
+#jump.go{animation:jump .9s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes jump{0%{opacity:1;transform:translate(-50%,40%) rotateX(0) scale(.3)}60%{opacity:1;transform:translate(-50%,120%) rotateX(-35deg) scale(3.2)}100%{opacity:1;transform:translate(-50%,105%) rotateX(-25deg) scale(2.6)}}
+.ovmsg{font-size:clamp(26px,5vw,52px);font-weight:bold;line-height:1.35;opacity:0;transform:scale(.4);transition:all .45s cubic-bezier(.2,1.6,.4,1);text-shadow:0 3px 0 var(--shu),0 0 20px #000;z-index:2}
+.ovmsg.on{opacity:1;transform:scale(1)}
+.ovmsg small{display:block;font-size:.45em;color:var(--kin);text-shadow:none;margin-top:6px}
+.ov .big{opacity:0;transition:opacity .4s;z-index:2}.ov .big.on{opacity:1}
+.ov svg.cup{width:110px;height:110px}
+#intrude{display:none;background:radial-gradient(circle,#7d1a15,#120b09 75%)}
+.shake{animation:shake .5s linear 2}
+@keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-12px,6px) rotate(-1deg)}40%{transform:translate(10px,-8px) rotate(1deg)}60%{transform:translate(-8px,-4px)}80%{transform:translate(8px,6px) rotate(.5deg)}}
+@media (max-width:900px){
+  #game{flex-direction:column;align-items:center}
+  #side{width:94vw;max-height:none}
+  .seat .lab{width:130px;margin-left:-65px}
+  .seat .nm{font-size:17px}.seat .it{font-size:10px}
+  .cuprow svg{width:64px;height:64px}.cupname{font-size:24px}
+}
+</style>
+</head>
+<body>
+<div class="hdr"><h1>べく杯<b>ルーレット</b></h1><small>座敷の AI 場まわし係が、みんなの言葉でお題を出します</small><span class="sp"></span><button class="hbtn" id="toSetup" style="display:none">席を組み直す</button></div>
+
+<section id="setup">
+  <h2>まずは席決め（3〜6 人）</h2>
+  <p class="lead">名前はいりません。<b>席の位置</b>と<b>ひとこと自己紹介</b>だけ。<br>場まわし係はこの<b>ひとことをそのまま引用して</b>、お題をこしらえます。</p>
+  <div id="rows"></div>
+  <div class="setbtns">
+    <button class="sub" id="addRow">＋ 席を足す</button>
+    <span style="flex:1"></span>
+    <button class="big" id="start">この席で始める</button>
+  </div>
+  <p class="note">スマホをテーブルの真ん中に置いて、みんなで覗き込む前提です。席のラベルはそれぞれの席から読める向きに回ります。</p>
+</section>
+
+<section id="game">
+  <div id="board">
+    <div id="zen"></div>
+    <svg id="pegs" viewBox="-100 -100 200 200"></svg>
+    <svg id="koma" viewBox="-100 -100 200 200" aria-label="コマ"></svg>
+    <div class="hint" id="hint">タップ<br>または<br>なぞって回す</div>
+    <div id="seats"></div>
+    <div id="result"><div class="card">
+      <div class="cuprow"><svg id="cupsvg" viewBox="-50 -50 100 100"></svg><div><div class="cupname" id="cupname"></div><div class="cupfx" id="cupfx"></div></div></div>
+      <div class="mc"><div class="mcface"><i>◉◉</i>場まわし</div><div class="bubble" id="bubble"></div></div>
+      <div class="rbtns"><button class="big" id="done">やった！</button><button class="sub" id="turn">向き ↻</button><button class="sub" id="reroll">お題を変える</button></div>
+      <div class="sake">※ お酒が苦手な人はお茶や水で。飲む「ふり」も立派な一杯です。</div>
+    </div></div>
+  </div>
+  <aside id="side"><h3>場まわし帳</h3><ul id="log"><li class="empty">まだ一杯も出ていません。真ん中のコマを回してください。</li></ul></aside>
+</section>
+<div class="flash" id="flash"></div>
+<div class="ov" id="intro">
+  <h2>べく杯ルーレット</h2>
+  <div id="ikomaWrap"><svg id="ikoma" viewBox="-100 -100 200 200"></svg>
+    <svg id="jump" viewBox="-50 -50 100 100"><path d="M-30,-40 L30,-40 L0,45 Z" fill="#d9a83a" stroke="#1b1210" stroke-width="5"/><text y="-12" text-anchor="middle" font-size="22" font-weight="bold" fill="#1b1210">あなた</text></svg></div>
+  <div class="ovmsg" id="introMsg">最初に開いたのは、あなた。<br>まず一杯！<small id="introCup"></small></div>
+  <button class="big" id="introGo">飲んだ！ 席決めへ</button>
+</div>
+<div class="ov" id="intrude">
+  <svg class="cup" id="icup" viewBox="-50 -50 100 100"></svg>
+  <div class="ovmsg" id="intrudeMsg"></div>
+  <button class="big" id="intrudeGo">飲みました…</button>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const DIRS = {'北':-90,'北東':-45,'東':0,'南東':45,'南':90,'南西':135,'西':180,'北西':-135};
+const EXAMPLES = [
+  ['北','最近ぬか漬けを始めた'],['東','明日の発表がまだ白紙'],['南','カツオは塩派'],['西','終電を気にしている'],
+  ['北東','乾杯の音頭が、いまだに苦手'],['南西','旅先で傘を三本なくした'],['南東','猫に毎朝起こされる、目覚ましより正確'],['北西','財布がレシートでパンパン']
+];
+
+/* ================= 席登録 ================= */
+function addRow(pos, intro){
+  const rows = $('#rows');
+  if(rows.children.length >= 6) return;
+  const used = [...rows.querySelectorAll('select')].map(s=>s.value);
+  if(!pos){ const ex = EXAMPLES.find(e=>!used.includes(e[0])) || EXAMPLES[0]; pos = ex[0]; intro = ex[1]; }
+  const d = document.createElement('div'); d.className='row';
+  d.innerHTML = `<select>${Object.keys(DIRS).map(k=>`<option ${k===pos?'selected':''}>${k}</option>`).join('')}</select><span>の席</span><span class="q">「</span><input maxlength="40"><span class="q">」</span><button class="del" title="この席を外す">×</button>`;
+  d.querySelector('input').value = intro;
+  d.querySelector('.del').onclick = () => { if(rows.children.length>3) d.remove(); };
+  rows.appendChild(d);
+}
+EXAMPLES.slice(0,4).forEach(e=>addRow(e[0],e[1]));
+$('#addRow').onclick = () => addRow();
+
+let seats = [], history = [], komaR = 0, busy = false, current = null, extraRot = 0;
+
+$('#start').onclick = () => {
+  initAudio();
+  const rows = [...$('#rows').children];
+  const cnt = {};
+  seats = rows.map((r,i) => {
+    const pos = r.querySelector('select').value;
+    const intro = (r.querySelector('input').value.trim() || EXAMPLES[i][1]);
+    cnt[pos] = (cnt[pos]||0)+1;
+    const label = cnt[pos]>1 ? `${pos}の席${'ⅡⅢⅣⅤⅥ'[cnt[pos]-2]}` : `${pos}の席`;
+    return {pos, intro, name:label, count:0, ang: DIRS[pos] + (cnt[pos]-1)*24};
+  });
+  history = [];
+  $('#setup').style.display='none'; $('#game').style.display='flex'; $('#toSetup').style.display='';
+  renderSeats(); renderLog(); hideResult();
+  $('#hint').style.opacity = 1;
+  boom();
+};
+$('#toSetup').onclick = () => { if(busy) return; $('#setup').style.display=''; $('#game').style.display='none'; $('#toSetup').style.display='none'; };
+
+/* ================= 盤 ================= */
+function renderSeats(){
+  const box = $('#seats'); box.innerHTML='';
+  seats.forEach((s,i)=>{
+    const a = s.ang*Math.PI/180, r = 43;
+    const el = document.createElement('div'); el.className='seat'; el.id='seat'+i;
+    el.style.left = (50+r*Math.cos(a))+'%'; el.style.top = (50+r*Math.sin(a))+'%';
+    el.innerHTML = `<div class="lab" style="transform:rotate(${s.ang-90}deg) translate(0,-50%)"><div class="nm">${esc(s.name)}</div><div class="it">「${esc(s.intro)}」</div><div class="ct"></div></div>`;
+    box.appendChild(el);
+  });
+  updateCounts();
+}
+function updateCounts(){ seats.forEach((s,i)=>{ const c=$('#seat'+i+' .ct'); if(c) c.textContent = s.count ? '🍶'.repeat(Math.min(s.count,5))+(s.count>5?'+':'')+` ${s.count}杯` : ''; }); }
+function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// コマと鋲
+function komaMarkup(gid){
+  let p='';
+  for(let i=0;i<12;i++){ const a=i*30*Math.PI/180; p+=`<circle cx="${92*Math.cos(a)}" cy="${92*Math.sin(a)}" r="2.6" fill="#d9a83a"/>`; }
+  $('#pegs').innerHTML = p;
+  let k = `<defs><radialGradient id="${gid}" cx=".4" cy=".35"><stop offset="0" stop-color="#ff7a5c"/><stop offset="1" stop-color="#a8231d"/></radialGradient></defs>`;
+  k += `<path d="M-14,-62 L0,-99 L14,-62 Z" fill="#d9a83a" stroke="#1b1210" stroke-width="3"/>`;
+  k += `<circle r="66" fill="url(#${gid})" stroke="#1b1210" stroke-width="4"/>`;
+  for(let i=0;i<8;i++){ const a1=i*45*Math.PI/180,a2=(i*45+22.5)*Math.PI/180;
+    k+=`<path d="M0,0 L${66*Math.cos(a1)},${66*Math.sin(a1)} A66,66 0 0 1 ${66*Math.cos(a2)},${66*Math.sin(a2)} Z" fill="#1b1210" opacity=".85"/>`; }
+  k += `<circle r="44" fill="#fbf3df" stroke="#d9a83a" stroke-width="4"/><circle r="36" fill="none" stroke="#c8322b" stroke-width="2" stroke-dasharray="4 4"/>`;
+  k += `<text y="-4" text-anchor="middle" font-size="26" font-weight="bold" fill="#1b1210" font-family="serif">べく</text><text y="22" text-anchor="middle" font-size="14" fill="#c8322b" font-family="serif">▲ここ</text>`;
+  k += `<circle r="7" cy="-52" fill="#d9a83a" stroke="#1b1210" stroke-width="2"/>`;
+  return k;
+}
+$('#koma').innerHTML = komaMarkup('g1'); $('#ikoma').innerHTML = komaMarkup('g2');
+function setKoma(r){ $('#koma').style.transform = `translate(-50%,-50%) rotate(${r}deg)`; }
+
+/* ================= 回す ================= */
+const board = $('#board');
+let drag = null;
+function centerOf(){ const b=board.getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]; }
+board.addEventListener('pointerdown', e => {
+  if(busy || current || e.target.closest('#result')) return;
+  initAudio();
+  const [cx,cy] = centerOf();
+  drag = {x0:e.clientX,y0:e.clientY,last:Math.atan2(e.clientY-cy,e.clientX-cx),pts:[],moved:0};
+  board.setPointerCapture(e.pointerId);
+});
+board.addEventListener('pointermove', e => {
+  if(!drag) return;
+  const [cx,cy] = centerOf();
+  const a = Math.atan2(e.clientY-cy,e.clientX-cx);
+  let d = a-drag.last; if(d>Math.PI) d-=2*Math.PI; if(d<-Math.PI) d+=2*Math.PI;
+  drag.last = a; komaR += d*180/Math.PI; setKoma(komaR);
+  drag.moved = Math.hypot(e.clientX-drag.x0, e.clientY-drag.y0);
+  const t = performance.now(); drag.pts.push([t,komaR]); drag.pts = drag.pts.filter(p=>t-p[0]<100);
+});
+board.addEventListener('pointerup', e => {
+  if(!drag) return;
+  let v;
+  if(drag.moved < 12 || drag.pts.length<2){ v = (900+Math.random()*900) * (Math.random()<.5?-1:1); }
+  else { const a=drag.pts[0], b=drag.pts[drag.pts.length-1]; v = (b[1]-a[1])/Math.max(16,(b[0]-a[0]))*1000;
+    const s = Math.sign(v)||1; v = s*Math.min(3200, Math.max(800, Math.abs(v))); }
+  drag = null; spin(v);
+});
+
+function spin(v){
+  busy = true; $('#hint').style.opacity = 0;
+  seats.forEach((_,i)=>$('#seat'+i).classList.remove('hit'));
+  const dir = Math.sign(v), D0 = Math.max(720, v*v/(2*700)); // 自然な停止距離
+  const R0 = komaR;
+  // 自然停止点より先で、いちばん近い席の正面に止める
+  let best=null;
+  seats.forEach((s,i)=>{
+    const tgt = s.ang + 90 + (Math.random()-.5)*8;  // 指す角度 = R - 90
+    let Rf = tgt + 360*Math.ceil((R0 + dir*D0 - tgt)/360);
+    if(dir<0) Rf = tgt + 360*Math.floor((R0 + dir*D0 - tgt)/360);
+    const dist = Math.abs(Rf-R0);
+    if(!best || dist<best.dist) best={i,Rf,dist};
+  });
+  const D = best.Rf - R0, T = Math.min(6200, Math.max(2400, 3*Math.abs(D)/Math.abs(v)*1000));
+  const t0 = performance.now(); let lastPeg = Math.floor(R0/30);
+  startWhoosh();
+  (function step(now){
+    const u = Math.min(1,(now-t0)/T);
+    komaR = R0 + D*(1-Math.pow(1-u,3)); setKoma(komaR);
+    const speed = Math.pow(1-u,2);
+    setWhoosh(speed);
+    const peg = Math.floor(komaR/30);
+    if(peg!==lastPeg){ tick(.4+.6*speed); lastPeg=peg; }
+    if(u<1) requestAnimationFrame(step); else { stopWhoosh(); landed(best.i); }
+  })(t0);
+}
+
+/* ================= お題づくり（入力の切り貼り） ================= */
+const PART = /(から|まで|より|[をがはにでもへとの])/g;
+function cuts(s){
+  // 助詞で切れる位置を探す（直後が漢字・カナのところを優先）
+  const out=[]; let m; PART.lastIndex=0;
+  while((m=PART.exec(s))){ const i=m.index+m[0].length; if(m.index<1||i>s.length-2) continue;
+    out.push({i, good: !/[ぁ-ゖ]/.test(s[i])}); }
+  const good = out.filter(o=>o.good); return (good.length?good:out).map(o=>o.i);
+}
+function quoteOf(s, mode){
+  s = s.replace(/[。！!？?]+$/,'');
+  const comma = s.split(/[、，,]/).map(x=>x.trim()).filter(Boolean);
+  if(!mode) mode = pick(['full','tail','side','tail','side']);
+  if(mode==='side' && comma.length>1) return pick(comma);
+  const c = cuts(s);
+  if(mode==='full' || !c.length) return s;
+  if(mode==='head') return s.slice(0, pick(c));
+  return s.slice(pick(c));            // tail = 後半だけ
+}
+const tailOf = s => { const c=cuts(s.replace(/[、，,].*$/,'')); const t=s.replace(/[、，,].*$/,''); return c.length? t.slice(c[c.length-1]) : t; };
+const headOf = s => { const c=cuts(s); return c.length? s.slice(0,c[0]) : s; };
+const W = x => `<q>『${esc(x)}』</q>`;
+
+const TEMPLATES = [
+  {v:'作戦を発表した', f:c=>`${W(c.aF)}の${c.A}さん、${W(c.bF)}の${c.B}に向かって、${W(c.bT)}の良さだけで${W(c.a)}を乗り切る作戦を 30 秒で発表！`},
+  {v:'一句詠んだ', f:c=>`${c.A}さん、${W(c.a)}と${c.B}の${W(c.b)}をくっつけて、五七五で一句！ 詠んだら全員で「よっ！」`},
+  {v:'人の話を熱く語った', f:c=>`${c.A}さん、${c.B}の${W(c.bF)}を、まるで自分の人生みたいに熱く 20 秒！`},
+  {v:'入れ替わって乾杯した', f:c=>`入れ替わり！ ${c.A}さんは今から${W(c.bF)}の人、${c.B}は${W(c.aF)}の人。その設定のまま乾杯のあいさつを一言ずつ！`},
+  {v:'主役争いをした', f:c=>`${W(c.a)} 対 ${W(c.b)}！ ${c.A}さんと${c.B}、どっちが今夜の主役か 10 秒ずつ主張。拍手の大きいほうが勝ち！`},
+  {v:'別人になって自己紹介した', f:c=>`速報、${W(c.mix)}――${c.A}さん、この混ざった新しい自分になりきって、自己紹介をやり直して！`},
+  {v:'理由を三つ叫んだ', f:c=>`${c.A}さん、${W(c.a)}の理由を三つ、指を折りながら大声で！ ${c.C}は「なんで？」と二回ツッコむこと！`},
+  {v:'三通りに言い分けた', f:c=>`${c.A}さん、${W(c.a)}を、喜び・怒り・切なさの三通りで言って！ いちばん刺さった声を${c.B}が選ぶ！`},
+  {v:'未来から一言くれた', f:c=>`${c.A}さん、十年後の自分になって、${W(c.aF)}だった今夜の自分へ、ひとことどうぞ！`},
+  {v:'無言で演じた', f:c=>`${c.C}が実況！ ${c.A}さんは声を出さずにジェスチャーで${W(c.a)}を表現。${c.B}が当てたら${c.B}も一口！`},
+  {v:'審判をつとめた', f:c=>`${c.A}さん、審判です。${c.B}の${W(c.b)}と、${c.C}の${W(c.c)}、どっちに共感するか理由つきで判定！`},
+  {v:'見出しを読み上げた', f:c=>`${c.A}さん、${W(c.a)}を新聞の一面の見出しにして読み上げて！ 締めの一語は${W(c.bT)}で！`},
+  {v:'物語の口火を切った', f:c=>`${W(c.aF)}……で、続きは？ ${c.A}さんが一文、${c.B}が一文、${c.C}が一文。三人で物語にして！`},
+  {v:'悩み相談をした', f:c=>`${c.A}さん、${c.B}に${W(c.a)}の悩み相談を 15 秒！ ${c.B}は${W(c.bT)}の目線で答えること！`},
+];
+const CUPS = [
+  {k:'hyottoko', n:'ひょっとこ杯', fx:'底に穴あり。指でふさいだまま、置かずに最後まで！', w:3},
+  {k:'tengu', n:'天狗杯', fx:'長い鼻までなみなみ。いちばんの大盃！', w:2},
+  {k:'okame', n:'おかめ杯', fx:'いちばん小さい、やさしい一杯。', w:3},
+];
+function pickCup(){ const t=CUPS.reduce((a,c)=>a+c.w,0); let r=Math.random()*t; for(const c of CUPS){ if((r-=c.w)<0) return c; } return CUPS[0]; }
+
+function makeOdai(i){
+  const A = seats[i], others = seats.filter((_,j)=>j!==i).sort(()=>Math.random()-.5);
+  const B = others[0], C = others[1] || others[0];
+  const c = {A:A.name, B:B.name, C:C.name,
+    aF:A.intro, a:quoteOf(A.intro), bF:B.intro, b:quoteOf(B.intro), bT:tailOf(B.intro), c:quoteOf(C.intro),
+    mix: headOf(A.intro)+tailOf(B.intro)};
+  if(c.mix===A.intro) c.mix = headOf(B.intro)+tailOf(A.intro);
+  const recent = history.slice(-3).map(h=>h.tpl);
+  const pool = TEMPLATES.filter(t=>!recent.includes(t));
+  const tpl = pick(pool.length?pool:TEMPLATES);
+  // 前の回を拾う
+  let cb = '';
+  const prev = history[history.length-1], pp = history[history.length-2];
+  if(prev){
+    const opts = [];
+    if(prev.seat===i) opts.push(`また${A.name}！ これで${A.count+1}杯目、連チャンです！`);
+    if(prev.seat!==i) opts.push(`さっき${prev.verb}${prev.name}、今度は見届け役！`);
+    opts.push(`${prev.name}の${W(prev.frag)}、まだ座敷に響いてる……さあ次！`);
+    if(prev.seat!==i) opts.push(`前の回で${prev.cup}を空けた${prev.name}、${A.name}にお酌をどうぞ！`);
+    if(prev.others.includes(A.name) && prev.seat!==i) opts.push(`さっき${prev.name}のお題に巻き込まれた${A.name}、今度は本人の番！`);
+    if(pp && pp.seat!==i) opts.push(`${pp.name}が${pp.verb.replace(/た$/,'て')}、${prev.name}が${prev.verb}。流れはいま${A.name}に！`);
+    if(A.count>=2) opts.push(`${A.name}、もう${A.count}杯。今夜いちばん止まる席かもしれない！`);
+    cb = pick(opts);
+  }
+  return {i, tpl, html:tpl.f(c), cb, frag:c.a, others:[B.name,C.name]};
+}
+
+/* ================= 止まった ================= */
+function landed(i){
+  thunk(); setTimeout(taiko,180);
+  $('#seat'+i).classList.add('hit');
+  setTimeout(()=>showResult(i), 650);
+}
+function showResult(i){
+  const cup = pickCup(), od = makeOdai(i);
+  current = {...od, cup};
+  extraRot = 0;
+  $('#cupsvg').innerHTML = cupSVG(cup.k);
+  $('#cupname').textContent = cup.n;
+  $('#cupfx').textContent = `${seats[i].name}さん、${cup.fx}`;
+  $('#bubble').innerHTML = (od.cb?`<span class="cb">${od.cb}</span>`:'') + od.html;
+  const res = $('#result'); res.style.setProperty('--rot', (seats[i].ang-90)+'deg');
+  res.classList.add('on'); busy=false;
+  flash(); shout();
+}
+function hideResult(){ $('#result').classList.remove('on'); current=null; }
+$('#turn').onclick = () => { extraRot += 90; const r=$('#result'); r.style.setProperty('--rot', (seats[current.i].ang-90+extraRot)+'deg'); tick(.6); };
+$('#reroll').onclick = () => { const i=current.i, cup=current.cup; const od=makeOdai(i); current={...od,cup}; $('#bubble').innerHTML=(od.cb?`<span class="cb">${od.cb}</span>`:'')+od.html; tick(.8); };
+$('#done').onclick = () => {
+  const s = seats[current.i]; s.count++;
+  history.push({seat:current.i, name:s.name, verb:current.tpl.v, frag:current.frag, cup:current.cup.n, others:current.others, text:$('#bubble').textContent});
+  updateCounts(); renderLog(); cheer(); confetti();
+  hideResult(); $('#hint').style.opacity=1;
+};
+function renderLog(){
+  const ul=$('#log');
+  if(!history.length){ ul.innerHTML='<li class="empty">まだ一杯も出ていません。真ん中のコマを回してください。</li>'; return; }
+  ul.innerHTML = history.slice().reverse().map((h,k)=>`<li><b>${history.length-k}杯目</b> ${esc(h.name)}・${esc(h.cup)}<br>${esc(h.text)}</li>`).join('');
+}
+
+/* ================= 杯の絵 ================= */
+function cupSVG(k){
+  const base = `<ellipse cx="0" cy="40" rx="30" ry="6" fill="rgba(0,0,0,.25)"/>`;
+  if(k==='tengu') return base+`<circle r="34" fill="#c8322b" stroke="#1b1210" stroke-width="3"/>
+    <path d="M-20,-14 L-6,-8 M20,-14 L6,-8" stroke="#1b1210" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="-11" cy="-3" r="3.5" fill="#1b1210"/><circle cx="11" cy="-3" r="3.5" fill="#1b1210"/>
+    <path d="M-5,0 Q0,-4 5,0 L40,-34 Q44,-30 38,-26 Z" fill="#e2513f" stroke="#1b1210" stroke-width="2.5"/>
+    <path d="M-12,20 Q0,14 12,20" stroke="#1b1210" stroke-width="3" fill="none"/>
+    <path d="M-26,18 Q-20,34 0,36 Q20,34 26,18" fill="#fbf3df" opacity=".9"/>`;
+  if(k==='okame') return base+`<ellipse rx="36" ry="32" fill="#fbf3df" stroke="#1b1210" stroke-width="3"/>
+    <path d="M-36,-6 Q-30,-34 0,-32 Q30,-34 36,-6 Q20,-22 0,-20 Q-20,-22 -36,-6Z" fill="#1b1210"/>
+    <ellipse cx="-12" cy="-12" rx="4" ry="2.5" fill="#1b1210"/><ellipse cx="12" cy="-12" rx="4" ry="2.5" fill="#1b1210"/>
+    <path d="M-17,-2 Q-12,2 -7,-2 M7,-2 Q12,2 17,-2" stroke="#1b1210" stroke-width="2.5" fill="none"/>
+    <circle cx="-20" cy="10" r="7" fill="#f4a1a1" opacity=".8"/><circle cx="20" cy="10" r="7" fill="#f4a1a1" opacity=".8"/>
+    <ellipse cx="0" cy="16" rx="4" ry="3" fill="#c8322b"/>`;
+  return base+`<circle r="34" fill="#f2c48d" stroke="#1b1210" stroke-width="3"/>
+    <path d="M-34,-12 Q0,-40 34,-12 L30,-20 Q0,-46 -30,-20Z" fill="#3a6fb0"/>
+    <circle cx="-13" cy="-6" r="7" fill="#fff" stroke="#1b1210" stroke-width="2"/><circle cx="-12" cy="-6" r="3" fill="#1b1210"/>
+    <circle cx="12" cy="-4" r="4.5" fill="#fff" stroke="#1b1210" stroke-width="2"/><circle cx="13" cy="-4" r="2" fill="#1b1210"/>
+    <path d="M-15,-17 Q-12,-21 -8,-17 M8,-13 Q12,-16 16,-12" stroke="#1b1210" stroke-width="2" fill="none"/>
+    <circle cx="14" cy="16" r="7" fill="#c8322b" stroke="#1b1210" stroke-width="2.5"/><circle cx="14" cy="16" r="3" fill="#1b1210"/>
+    <circle cx="0" cy="44" r="4" fill="#1b1210" opacity=".7"/>`;
+}
+
+/* ================= 音（Web Audio 合成） ================= */
+let AC=null, whoosh=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended') AC.resume(); }
+function env(g,t,a,peak,d){ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d); }
+function tone(f,type,peak,d,t=0,slide){ if(!AC) return; const n=AC.currentTime+t, o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,n); if(slide) o.frequency.exponentialRampToValueAtTime(slide,n+d);
+  env(g,n,.005,peak,d); o.connect(g).connect(AC.destination); o.start(n); o.stop(n+d+.05); }
+function noiseBuf(){ const b=AC.createBuffer(1,AC.sampleRate,AC.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; return b; }
+function tick(v){ tone(1700+Math.random()*300,'square',.05*v,.03); tone(900,'triangle',.08*v,.04); }
+function thunk(){ tone(820,'sine',.35,.25); tone(1230,'sine',.18,.18); tone(410,'triangle',.2,.3); }
+function taiko(){ tone(140,'sine',.7,.5,0,50); tone(140,'sine',.5,.4,.22,55); }
+function shout(){ [523,659,784,1047].forEach((f,k)=>tone(f,'triangle',.12,.18,.05+k*.07)); }
+function cheer(){ if(!AC) return; for(let k=0;k<10;k++){ const n=AC.currentTime+k*.06+Math.random()*.03, s=AC.createBufferSource(), f=AC.createBiquadFilter(), g=AC.createGain();
+  s.buffer=noiseBuf(); f.type='bandpass'; f.frequency.value=1400+Math.random()*900; env(g,n,.003,.25,.07); s.connect(f).connect(g).connect(AC.destination); s.start(n); s.stop(n+.12); }
+  tone(1568,'sine',.1,.6,.1); tone(2093,'sine',.07,.7,.2); }
+function startWhoosh(){ if(!AC) return; const s=AC.createBufferSource(), f=AC.createBiquadFilter(), g=AC.createGain();
+  s.buffer=noiseBuf(); s.loop=true; f.type='bandpass'; f.Q.value=2; g.gain.value=0; s.connect(f).connect(g).connect(AC.destination); s.start(); whoosh={s,f,g}; }
+function setWhoosh(sp){ if(!whoosh) return; whoosh.g.gain.setTargetAtTime(.12*sp,AC.currentTime,.03); whoosh.f.frequency.setTargetAtTime(250+1400*sp,AC.currentTime,.03); }
+function stopWhoosh(){ if(!whoosh) return; const w=whoosh; whoosh=null; w.g.gain.setTargetAtTime(0,AC.currentTime,.05); w.s.stop(AC.currentTime+.3); }
+function boom(){ tone(110,'sine',.5,.6,0,45); }
+
+/* ================= にぎやかし ================= */
+function flash(){ const f=$('#flash'); f.style.opacity=1; setTimeout(()=>f.style.opacity=0,250); }
+function confetti(){ const em=['🍶','🎉','✨','🐟','🏮','👏'];
+  for(let k=0;k<18;k++){ const d=document.createElement('div'); d.className='conf'; d.textContent=pick(em);
+    d.style.left=(10+Math.random()*80)+'vw'; d.style.top=(5+Math.random()*20)+'vh'; d.style.animationDelay=(Math.random()*.4)+'s';
+    document.body.appendChild(d); setTimeout(()=>d.remove(),2200); } }
+/* ================= 開幕: コマが勝手に回って「あなた」を指す ================= */
+function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+function shakeAll(){ document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); }
+let introOpen = true;
+(function introSpin(){
+  const R1 = 360*5 + 180;            // 矢印が真下＝画面の手前（覗き込む人）を指す
+  const t0 = performance.now(), T = 3600; let lp = 0;
+  (function f(now){
+    const u = Math.min(1,(now-t0)/T), r = R1*(1-Math.pow(1-u,3));
+    $('#ikoma').style.transform = `rotate(${r}deg)`;
+    const pg = Math.floor(r/30); if(pg!==lp){ tick(.3+.7*Math.pow(1-u,2)); lp=pg; }
+    if(u<1) requestAnimationFrame(f);
+    else {
+      thunk(); taiko(); buzz([90,50,240]);
+      $('#jump').classList.add('go');
+      setTimeout(()=>{ shakeAll(); const c=pickCup(); $('#introCup').textContent=`${c.n}――${c.fx}`;
+        $('#introMsg').classList.add('on'); $('#introGo').classList.add('on'); shout(); }, 420);
+    }
+  })(t0);
+})();
+$('#introGo').onclick = () => { initAudio(); cheer(); confetti(); $('#intro').style.display='none'; introOpen=false; };
+
+/* ================= 割り込み: 置けない杯 ================= */
+let lastIntrude = 0;
+function intrude(msg, sub){
+  if(introOpen || busy || drag || Date.now()-lastIntrude < 6000 || $('#intrude').style.display==='flex') return;
+  lastIntrude = Date.now();
+  const c = pickCup();
+  $('#icup').innerHTML = cupSVG(c.k);
+  $('#intrudeMsg').innerHTML = `${msg}<small>${c.n}：${c.fx}${sub?'<br>'+sub:''}</small>`;
+  const o = $('#intrude'); o.style.display='flex';
+  $('#intrudeMsg').classList.remove('on'); void o.offsetWidth; $('#intrudeMsg').classList.add('on'); $('#intrudeGo').classList.add('on');
+  shakeAll(); buzz([200,80,200]); taiko(); setTimeout(shout,200);
+  history.push({seat:-1, name:'手に取った人', verb:'割り込みで罰杯を飲んだ', frag:msg.replace(/<[^>]+>/g,''), cup:c.n, others:[], text:'割り込み：'+msg.replace(/<[^>]+>/g,'')});
+}
+$('#intrudeGo').onclick = () => { $('#intrude').style.display='none'; cheer(); if(seats.length) renderLog(); };
+// スマホ: 机から持ち上げた／大きく傾けた
+let flatSeen = false;
+function onOrient(e){
+  if(e.beta==null) return;
+  const b = Math.abs(e.beta), g = Math.abs(e.gamma||0);
+  if(b<15 && g<15) flatSeen = true;                 // いったん机に寝かせてから「武装」
+  else if(flatSeen && (b>40 || g>40)){ flatSeen=false;
+    intrude('持ち上げましたね。<br>置けない杯です、あなたの番！', '杯を持つ手を下ろせるのは、飲み干してから。'); }
+}
+let orientAsked = false;
+function armOrientation(){
+  if(orientAsked || !window.DeviceOrientationEvent) return; orientAsked = true;
+  try{
+    if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+      DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted') addEventListener('deviceorientation',onOrient); }).catch(()=>{});
+    } else addEventListener('deviceorientation',onOrient);
+  }catch(e){}
+}
+document.addEventListener('pointerdown', ()=>{ initAudio(); armOrientation(); }, {capture:true});
+// PC: タブを離れて戻ってきた
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ hiddenAt = Date.now(); return; }
+  if(hiddenAt && Date.now()-hiddenAt > 800) setTimeout(()=>intrude('逃げましたね。<br>罰杯です！', `席を外していた ${Math.round((Date.now()-hiddenAt)/1000)} 秒ぶん、なみなみと。`),200);
+});
+
+// 待ち時間のコマはゆっくり揺れる
+(function idle(){ if(!busy && !drag && !current && $('#game').style.display==='flex'){ komaR += .15; setKoma(komaR); } requestAnimationFrame(idle); })();
+</script>
+</body>
+</html>

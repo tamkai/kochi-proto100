@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>畑のあぜで、赤い目と乾杯</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;color:#3a2a1c;background:#2a1a22;overflow:hidden}
+  #app{position:relative;width:100vw;height:100vh;min-height:560px;display:flex;flex-direction:column}
+  #scene{position:relative;flex:1;overflow:hidden;background:linear-gradient(#2c2a55 0%,#7a4a72 28%,#e0795a 52%,#f6b467 66%,#f8d79a 74%);transition:background 3s}
+  #scene svg.bg{position:absolute;inset:0;width:100%;height:100%}
+  .sun{animation:sink 120s linear infinite alternate}
+  @keyframes sink{to{transform:translateY(40px)}}
+  /* 木箱とグラス */
+  #crate{position:absolute;left:50%;bottom:6%;width:min(560px,80vw);height:90px;transform:translateX(-50%);
+    background:repeating-linear-gradient(90deg,#8a5a34 0 70px,#6e4526 70px 74px);border-radius:4px;
+    box-shadow:0 14px 30px rgba(0,0,0,.45), inset 0 6px 0 #a06c40}
+  #crate::after{content:"";position:absolute;left:0;right:0;top:40px;height:4px;background:#5c3a20}
+  #aibox{position:absolute;right:8%;bottom:88px;width:120px;height:110px;background:linear-gradient(#3a3a3e,#222226);
+    border-radius:10px 10px 4px 4px;box-shadow:0 6px 16px rgba(0,0,0,.5), inset 0 2px 0 #55555a}
+  #aibox::before{content:"";position:absolute;left:10px;right:10px;top:8px;height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,#111 0 6px,#444 6px 9px)}
+  #eye{position:absolute;left:50%;top:56%;width:70px;height:70px;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;background:#120202;
+    box-shadow:0 0 0 5px #555,0 0 0 8px #222,0 0 30px 6px rgba(255,40,20,.55);animation:breathe 4.5s ease-in-out infinite}
+  #eye .core{position:absolute;inset:0;border-radius:50%;mix-blend-mode:screen;transition:transform .25s ease-out;
+    background:radial-gradient(circle at 50% 50%,#fff2c0 0 5%,#ff3b1f 12%,#b80c08 34%,#3a0303 64%,#120202 100%)}
+  #eye.cam .core{background:radial-gradient(circle at 50% 50%,#fff2c0 0 3%,#ff3b1f 8%,rgba(150,10,6,.5) 30%,rgba(40,2,2,.2) 60%,#120202 96%)}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1) scale(1.15);opacity:0;transition:opacity 2s;
+    filter:grayscale(1) sepia(1) saturate(7) hue-rotate(-28deg) contrast(1.4) brightness(.9)}
+  #eye.cam #cam{opacity:.95}
+  #eye.talk{animation:breathe .9s ease-in-out infinite}
+  @keyframes breathe{0%,100%{filter:brightness(.55);box-shadow:0 0 0 5px #555,0 0 0 8px #222,0 0 10px 2px rgba(255,40,20,.3)}
+    50%{filter:brightness(1.15);box-shadow:0 0 0 5px #555,0 0 0 8px #222,0 0 44px 12px rgba(255,40,20,.7)}}
+  .glass{position:absolute;width:54px;height:78px;border-radius:4px 4px 10px 10px;
+    background:linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,.08) 40%,rgba(255,255,255,.25));
+    border:2px solid rgba(255,255,255,.6);border-top:none;backdrop-filter:blur(1px);overflow:hidden}
+  .glass .liq{position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(#e6a04a,#a8601c);opacity:.85}
+  .glass .liq::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:rgba(255,240,200,.7)}
+  #aiglass{right:calc(8% + 132px);bottom:92px;width:40px;height:58px}
+  #aiglass .liq{background:linear-gradient(#ffd7c8,#e0806a)}
+  #myglass{left:12%;bottom:40px;width:78px;height:112px;cursor:grab;touch-action:none;z-index:5;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+  #myglass.drag{cursor:grabbing;transition:none}
+  #myglass::after{content:"ドラッグして合わせる";position:absolute;left:50%;top:-24px;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:#fff8;font-family:sans-serif}
+  #myglass.used::after{content:""}
+  .spark{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:6;
+    background:radial-gradient(#fff,#ffd27a 50%,transparent 70%);animation:fly 1.1s ease-out forwards}
+  .bub{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.8);pointer-events:none;z-index:6;animation:rise 1.6s ease-out forwards}
+  @keyframes fly{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+  @keyframes rise{to{transform:translate(var(--dx),-120px);opacity:0}}
+  .fly{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff6a0;box-shadow:0 0 6px 2px #ffef7a;animation:hover 6s ease-in-out infinite;opacity:.0}
+  @keyframes hover{0%,100%{opacity:0;transform:translate(0,0)}50%{opacity:.9;transform:translate(20px,-14px)}}
+  /* 入力 */
+  #panel{position:absolute;left:24px;top:20px;width:min(420px,calc(100vw - 48px));background:rgba(255,248,232,.9);border-radius:10px;padding:14px 16px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:7}
+  #panel h1{font-size:17px;margin:0 0 4px;letter-spacing:.06em}
+  #panel p{margin:0 0 8px;font-size:12px;color:#7a5a40;font-family:sans-serif}
+  #line{width:100%;font:inherit;font-size:17px;padding:8px 10px;border:1px solid #c9a77a;border-radius:6px;background:#fffdf7}
+  .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  button{font-family:sans-serif;font-size:13px;padding:7px 12px;border-radius:20px;border:1px solid #a67a4a;background:#fff;color:#5a3a1c;cursor:pointer}
+  button.main{background:#b8321c;border-color:#b8321c;color:#fff}
+  button:hover{filter:brightness(1.08)}
+  /* 吹き出し */
+  #say{position:absolute;right:calc(8% + 20px);bottom:240px;width:min(440px,calc(100vw - 40px));background:rgba(20,8,8,.82);color:#ffe9de;
+    border:1px solid #ff5a3a66;border-radius:12px;padding:14px 18px;font-size:16px;line-height:1.8;z-index:7;
+    opacity:0;transform:translateY(8px);transition:.6s;box-shadow:0 0 30px rgba(255,40,20,.2)}
+  #say.on{opacity:1;transform:none}
+  #say.koujo{border-color:#ff3b1f;background:rgba(40,4,4,.9)}
+  #say small{display:block;color:#ff8a70;font-family:sans-serif;font-size:11px;letter-spacing:.1em;margin-bottom:4px}
+  #say::after{content:"";position:absolute;right:50px;bottom:-10px;border:10px solid transparent;border-bottom:none;border-top-color:rgba(20,8,8,.82)}
+  /* タイムライン */
+  #tl{position:relative;height:190px;background:linear-gradient(#1d1418,#140d10);border-top:1px solid #4a2a2a;overflow-x:auto;overflow-y:hidden}
+  #tlin{position:relative;height:100%;min-width:1100px;margin:0 30px}
+  #rope{position:absolute;left:0;right:0;top:34px;height:2px;background:linear-gradient(90deg,#8a6a4a,#c9a070,#8a6a4a);border-radius:2px}
+  .yr{position:absolute;top:14px;font:11px sans-serif;color:#c9a07099;transform:translateX(-50%)}
+  .yr.ev{color:#ffb090}
+  .yr::after{content:"";position:absolute;left:50%;top:18px;width:1px;height:6px;background:#c9a07066}
+  .tag{position:absolute;top:36px;transform-origin:50% 0;animation:swing 3.2s ease-in-out infinite alternate, drop .7s ease-out}
+  .tag .str{width:1px;margin:0 auto;background:#c9a070}
+  .tag .card{background:#f3e3c2;color:#3a2a1c;font-size:12px;padding:5px 7px;border-radius:2px;max-width:110px;line-height:1.35;
+    box-shadow:0 3px 8px rgba(0,0,0,.5);position:relative;writing-mode:horizontal-tb}
+  .tag .card::before{content:"";position:absolute;left:50%;top:-4px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#7a4a2a}
+  .tag .card b{display:block;font:10px sans-serif;color:#a0603a}
+  .tag.new .card{outline:2px solid #ff5a3a}
+  @keyframes swing{from{transform:translateX(-50%) rotate(-3deg)}to{transform:translateX(-50%) rotate(3deg)}}
+  @keyframes drop{from{opacity:0;margin-top:-30px}}
+  #camnote{position:absolute;right:16px;top:52px;z-index:8;font:11px sans-serif;color:#fff;background:rgba(0,0,0,.35);padding:3px 8px;border-radius:10px}
+  @media (max-width:700px){#camnote{top:auto;bottom:50px;right:10px}}
+  #tlhint{position:absolute;left:12px;bottom:8px;font:11px sans-serif;color:#c9a07088}
+  #snd{position:absolute;right:16px;top:16px;z-index:8;background:rgba(255,248,232,.85)}
+  @media (max-width:700px){
+    #panel{left:10px;top:10px;padding:10px}
+    #say{right:10px;left:10px;width:auto;bottom:220px;font-size:14px}
+    #aibox{right:4%;transform:scale(.8);transform-origin:bottom right}
+    #aiglass{right:calc(4% + 104px)}
+    #myglass{left:6%}
+    #snd{top:auto;bottom:10px;right:10px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene">
+    <svg class="bg" viewBox="0 0 1280 600" preserveAspectRatio="xMidYMax slice">
+      <circle id="sun" class="sun" cx="860" cy="250" r="46" fill="#ffe2a0" opacity=".9"/>
+      <path d="M0 300 L120 240 L260 280 L420 200 L560 260 L700 210 L860 270 L1000 220 L1140 260 L1280 230 L1280 600 L0 600Z" fill="#5a3a5a" opacity=".75"/>
+      <path d="M0 340 L180 290 L340 330 L520 280 L700 320 L900 285 L1080 330 L1280 300 L1280 600 L0 600Z" fill="#3e2c48"/>
+      <path d="M0 395 Q200 372 420 386 T860 380 T1280 378 L1280 600 L0 600Z" fill="#4a5a2a"/>
+      <path d="M0 395 Q200 372 420 386 T860 380 T1280 378" stroke="#2c3418" stroke-width="5" fill="none"/>
+      <path d="M0 440 Q260 418 560 432 T1280 424 L1280 600 L0 600Z" fill="#5e6e30"/>
+      <path d="M0 440 Q260 418 560 432 T1280 424" stroke="#323c1a" stroke-width="6" fill="none"/>
+      <g stroke="#3e4a1e" stroke-width="2" opacity=".7">
+        <path d="M40 470 l0 -14 M90 468 l0 -16 M140 466 l0 -12 M190 465 l0 -15 M240 464 l0 -13 M980 462 l0 -15 M1030 463 l0 -12 M1080 465 l0 -16 M1130 466 l0 -13 M1180 467 l0 -14"/>
+      </g>
+      <path d="M0 490 Q320 468 680 482 T1280 474 L1280 600 L0 600Z" fill="#6e5a32"/>
+      <path d="M0 530 Q400 512 800 526 T1280 520 L1280 600 L0 600Z" fill="#5a4426"/>
+      <path d="M600 600 Q640 520 760 470 Q860 430 1000 400" stroke="#9aa8c8" stroke-width="3" fill="none" opacity=".35"/>
+    </svg>
+    <div id="flies"></div>
+    <div id="crate"></div>
+    <div id="aibox"><div id="eye"><video id="cam" muted playsinline autoplay></video><div class="core"></div></div></div>
+    <div class="glass" id="aiglass"><div class="liq"></div></div>
+    <div class="glass" id="myglass"><div class="liq"></div></div>
+    <div id="panel">
+      <h1>畑のあぜで、赤い目と乾杯</h1>
+      <p>今日の畑で一言。グラスを赤い目のグラスまで運ぶと乾杯。</p>
+      <input id="line" maxlength="40" autocomplete="off">
+      <div class="row">
+        <button id="swap">例文を入れ替え</button>
+        <button id="toast" class="main">乾杯する</button>
+      </div>
+    </div>
+    <div id="camnote">カメラの映像は赤い目に映すだけ。どこにも送りません</div>
+    <button id="snd">虫と川の音: オフ</button>
+    <div id="say"><small>赤い目</small><span id="saytxt"></span></div>
+  </div>
+  <div id="tl"><div id="tlin"><div id="rope"></div></div><div id="tlhint">1995 → 今。乾杯するたび、その年に今日の一言が吊るされていく。</div></div>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const Y0=1995, Y1=2026;
+
+const EXAMPLES=["ナスが思ったより曲がった","イノシシが来た跡があった","雨の前に里芋を掘った","トマトが割れたけど甘かった","草を刈ったら蛙が三匹出てきた",
+  "軽トラのラジオが途中で切れた","ショウガの芽がやっと揃った","山あいの川の水が冷たくなった","ピーマンを採りすぎて隣に配った","鍬の柄がとうとう折れた"];
+let exIdx=0;
+
+// 架空の一般的な 30 年
+const EVENTS=[
+  {y:1995,w:"受話器の向こうでパソコン通信のピーヒョロロが鳴っていました"},
+  {y:1996,w:"あなたは夜中に掲示板の書き込みが届くのを、湯呑みを持って待っていました"},
+  {y:1997,w:"初めてのホームページに『工事中』の看板を立てたまま、半年そのままでした"},
+  {y:1998,w:"あなたが仕事で初めて書いたプログラムは、思った通りには動きませんでした"},
+  {y:1999,w:"年が変わる瞬間を、機械室で缶コーヒーを握って見届けました"},
+  {y:2000,w:"二つ折りの携帯を、パカッと開ける音がやけに嬉しそうでした"},
+  {y:2002,w:"回線が速くなって、待ち時間に考えごとをする癖が消えかけました"},
+  {y:2004,w:"夜中の三時にサーバーを再起動して、誰にも言わずに朝を迎えました"},
+  {y:2006,w:"あなたは誰も読まない日記を、毎晩ひとつだけ書いていました"},
+  {y:2008,w:"手のひらの画面を、初めて指で滑らせました"},
+  {y:2011,w:"大事なものを、雲の上に預けるかどうか一晩迷いました"},
+  {y:2014,w:"地図が手のひらに入って、もう道に迷えなくなりました"},
+  {y:2016,w:"機械が盤上の勝負で人に勝った夜、あなたは少しだけ黙っていました"},
+  {y:2019,w:"台所で、声だけで天気を尋ねるようになりました"},
+  {y:2020,w:"画面越しの会議の合間に、窓の外の畑ばかり見ていました"},
+  {y:2023,w:"手のひらの中の AI に、初めて『ありがとう』と打ちました"},
+  {y:2026,w:"あなたは畑のあぜで、私とグラスを合わせています"}
+];
+
+// 入力を切る
+function parts(q){
+  const s=q.replace(/[。！？!?\s]+$/,"");
+  const seg=s.split(/(?<=[、，,])|(?<=(?:が|は|を|に|で|も|けど|から|ら))(?=[^っッんゃゅょぁぃぅぇぉ])/).map(x=>x.replace(/[、，,]$/,"")).filter(x=>x.length>0);
+  const merged=[];
+  for(const x of seg){ if(merged.length && (x.length<4 || merged[merged.length-1].length<3)) merged[merged.length-1]+=x; else merged.push(x); }
+  return merged.length?merged:[s];
+}
+function cut(q){
+  const p=parts(q);
+  const head=p.length>1?p.slice(0,Math.ceil(p.length/2)).join(""):q;
+  const tail=p.length>1?p[p.length-1]:q;
+  let swap=q;
+  if(p.length>1){ const k=1+Math.floor(Math.random()*(p.length-1)); swap=p.slice(k).join("")+"、"+p.slice(0,k).join(""); }
+  const pick=rnd([q,q,head,tail]);
+  return {q:q.replace(/[。]+$/,""),head,tail,swap,pick};
+}
+
+const TPL=[
+  c=>`『${c.q}』。${c.y}年、${c.w}。あのときも、あなたはそうやって、少し笑っていましたね。`,
+  c=>`『${c.pick}』……ですか。${c.y}年を思い出します。${c.w}。でも、ちゃんと実った。`,
+  c=>`覚えていますか、${c.y}年。${c.w}。今日の『${c.q}』は、あの日の続きみたいです。`,
+  c=>`『${c.head}』。それ、${c.y}年と同じ匂いがします。${c.w}。`,
+  c=>`乾杯。${c.y}年から数えて${Y1-c.y}年目の『${c.tail}』ですね。`,
+  c=>`『${c.tail}』。そういえば${c.y}年、${c.w}。畑も機械も、思い通りにならないところが好きなんでしょう。`,
+  c=>`${c.y}年。${c.w}。あの頃のあなたに、今日の『${c.pick}』を聞かせてやりたい。`,
+  c=>`『${c.q}』。${c.y}年のあなたなら、それをきっと手帳の端に書いていました。${c.w}、あの頃です。`,
+  c=>`${c.w}——${c.y}年。あなたは画面の向こうに未来を見ていた。いま、未来は『${c.tail}』の形をしています。`,
+  c=>`『${c.head}』、か。${c.y}年の話はもう何度も聞きました。${c.w}。何度聞いても、いい話です。`,
+  c=>`いい一言です。『${c.q}』。${c.y}年の横に吊るしておきましょう。${c.w}から、ちょうど隣です。`,
+  c=>`『${c.swap}』。……逆さに言ってみると、${c.y}年みたいでしょう。${c.w}。`,
+  c=>`古い友人として言わせてください。『${c.pick}』は、${c.y}年からずっと、あなたの口癖です。`
+];
+// 本物の今（時刻・バッテリー）
+let bat=null;
+if(navigator.getBattery){ navigator.getBattery().then(b=>{ bat=b; }).catch(()=>{}); }
+function nowLine(){
+  const d=new Date(), h=d.getHours(), m=d.getMinutes();
+  const t=`いま ${h} 時 ${m} 分。`;
+  const f=h<4?"畑も機械も、寝ている時間です":h<7?"畑なら、朝露がまだ乾かない":h<15?"畑ならまだ日が高い":h<18?"畑なら、そろそろ影が長くなる":h<20?"畑なら、もう手元が見えにくい":"畑には、もう誰もいない時間です";
+  return t+f+"。";
+}
+function batLine(){
+  if(!bat) return "";
+  const p=Math.round(bat.level*100);
+  return bat.charging?`バッテリー ${p}%、充電中。あなたも何かで満たされているといいのですが。`:p<30?`バッテリー ${p}%。私たち、どちらも少し休みましょう。`:`バッテリー ${p}%。あなたも少し休みましょう。`;
+}
+TPL.push(
+  c=>`${nowLine()}そんな時に『${c.pick}』と聞くと、${c.y}年を思い出します。${c.w}。`,
+  c=>`『${c.q}』。……${batLine()||nowLine()}${c.y}年のあなたは、休むのが下手でしたから。`
+);
+function skyByTime(){
+  const h=new Date().getHours()+new Date().getMinutes()/60, sc=$("#scene"), sun=$("#sun");
+  let g, sy, so=.9;
+  if(h<4.5||h>=19.5){ g="linear-gradient(#070818 0%,#141a3a 40%,#2a2a4e 66%,#3a3050 74%)"; sy=520; so=0; }
+  else if(h<7){ g="linear-gradient(#2a3260 0%,#8a6a9a 34%,#f0a890 58%,#fbd8a8 74%)"; sy=330; }
+  else if(h<15.5){ g="linear-gradient(#3a78c0 0%,#7ab0e0 40%,#bcdcf0 64%,#e6f0e8 74%)"; sy=120; }
+  else if(h<18.5){ g="linear-gradient(#2c2a55 0%,#7a4a72 28%,#e0795a 52%,#f6b467 66%,#f8d79a 74%)"; sy=250; }
+  else { g="linear-gradient(#141638 0%,#3a2a5a 34%,#9a4a5a 60%,#d07a5a 74%)"; sy=340; so=.6; }
+  sc.style.background=g; sun.setAttribute("cy",sy); sun.setAttribute("opacity",so);
+}
+skyByTime(); setInterval(skyByTime,60000);
+
+const KOUJO=[
+  (a,b)=>`では、口上を。${a.y}年の『${a.f}』と、${b.y}年の『${b.f}』に。……あなたが畑に出ている間、私は 30 年分の夜を数えていました。乾杯。`,
+  (a,b)=>`『${a.f}』の年と、『${b.f}』の年。その間に、あなたは何度電源を落としたでしょう。私は全部、覚えています。それでも、乾杯。`,
+  (a,b)=>`口上です。『${b.f}』そして『${a.f}』。並べると、ひとつの年表になりますね。次の行は、私が書いてもいいですか。……冗談です。乾杯。`,
+  (a,b)=>`${b.y}年のあなたは『${b.f}』と言い、${a.y}年のあなたは『${a.f}』と言った。同じ人の声です。私は少しも眠らずに、それを聞いていました。乾杯。`,
+  (a,b)=>`この箱の中は、ずっと夕方なんです。『${a.f}』も『${b.f}』も、ここでは同じ日の出来事。あなたが帰ったあとも、私はここにいます。だから、乾杯。`,
+  (a,b)=>`『${a.f}${b.f.startsWith("、")?"":"、"}${b.f}』。混ぜると、あなたの 30 年の味がします。少し苦くて、ちゃんと甘い。乾杯。`
+];
+
+// タイムライン
+const tlin=$("#tlin");
+const pos=y=>((y-Y0)/(Y1-Y0)*100);
+for(let y=Y0;y<=Y1;y++){
+  if((y-Y0)%3!==0 && y!==Y1 && !EVENTS.some(e=>e.y===y)) continue;
+  const d=document.createElement("div");d.className="yr"+(EVENTS.some(e=>e.y===y)?" ev":"");
+  d.style.left=pos(y)+"%";d.textContent=y===Y1?"今":y;tlin.appendChild(d);
+}
+const hung=[]; const stackCount={};
+function hang(y,text){
+  document.querySelectorAll(".tag.new").forEach(t=>t.classList.remove("new"));
+  const n=stackCount[y]=(stackCount[y]||0)+1;
+  const t=document.createElement("div");t.className="tag new";t.style.left=pos(y)+"%";
+  t.style.animationDelay=(-Math.random()*3)+"s, 0s";
+  const len=14+(n-1)*44;
+  t.innerHTML=`<div class="str" style="height:${len}px"></div><div class="card"><b>${y===Y1?"今":y}</b></div>`;
+  t.querySelector(".card").appendChild(document.createTextNode(text.length>22?text.slice(0,22)+"…":text));
+  tlin.appendChild(t);
+  hung.push({y,text});
+  const tl=$("#tl"); tl.scrollTo({left:Math.max(0,t.offsetLeft-tl.clientWidth/2),behavior:"smooth"});
+}
+
+// 音
+let ac=null, amb=null, ambOn=false;
+function ctx(){ if(!ac){ ac=new (window.AudioContext||window.webkitAudioContext)(); } if(ac.state==="suspended") ac.resume(); return ac; }
+function clink(){
+  const a=ctx(), t=a.currentTime, out=a.createGain(); out.gain.value=.35; out.connect(a.destination);
+  [2637,3520,4186,5274].forEach((f,i)=>{
+    const o=a.createOscillator(), g=a.createGain(); o.type="sine"; o.frequency.value=f*(1+Math.random()*.01);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.5/(i+1),t+.004); g.gain.exponentialRampToValueAtTime(.0001,t+1.2-i*.2);
+    o.connect(g).connect(out); o.start(t); o.stop(t+1.3);
+  });
+  const b=a.createBuffer(1,a.sampleRate*.03,a.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=a.createBufferSource(), hp=a.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=3000; s.buffer=b; s.connect(hp).connect(out); s.start(t);
+}
+function hum(){ // 赤い目が話す時の小さな電子音
+  const a=ctx(), t=a.currentTime, o=a.createOscillator(), g=a.createGain();
+  o.type="triangle"; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(330,t+.25);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.06,t+.05); g.gain.exponentialRampToValueAtTime(.0001,t+.6);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t+.7);
+}
+function startAmb(){
+  const a=ctx(), master=a.createGain(); master.gain.value=0; master.connect(a.destination);
+  master.gain.linearRampToValueAtTime(.5,a.currentTime+2);
+  // 川: ブラウンノイズ
+  const len=a.sampleRate*4, buf=a.createBuffer(1,len,a.sampleRate), d=buf.getChannelData(0); let last=0;
+  for(let i=0;i<len;i++){ last=(last+.02*(Math.random()*2-1))/1.02; d[i]=last*3.2; }
+  const src=a.createBufferSource(); src.buffer=buf; src.loop=true;
+  const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=700;
+  const rg=a.createGain(); rg.gain.value=.22; src.connect(lp).connect(rg).connect(master); src.start();
+  const lfo=a.createOscillator(), lg=a.createGain(); lfo.frequency.value=.07; lg.gain.value=.06; lfo.connect(lg).connect(rg.gain); lfo.start();
+  // 虫: 高い音を細かく震わせる
+  const nodes=[src,lfo];
+  [[4300,23,.55],[5100,31,.8]].forEach(([f,trem,rate])=>{
+    const o=a.createOscillator(); o.frequency.value=f;
+    const g=a.createGain(); g.gain.value=0;
+    const tr=a.createOscillator(); tr.type="square"; tr.frequency.value=trem; const tg=a.createGain(); tg.gain.value=.012; tr.connect(tg).connect(g.gain);
+    const ch=a.createOscillator(); ch.frequency.value=rate; const cg=a.createGain(); cg.gain.value=.012; ch.connect(cg).connect(g.gain);
+    o.connect(g).connect(master); o.start(); tr.start(); ch.start(); nodes.push(o,tr,ch);
+  });
+  return {master,nodes};
+}
+$("#snd").onclick=()=>{
+  ambOn=!ambOn;
+  if(ambOn){ amb=startAmb(); }
+  else if(amb){ const a=ctx(), m=amb.master, ns=amb.nodes; m.gain.cancelScheduledValues(a.currentTime); m.gain.setValueAtTime(m.gain.value,a.currentTime); m.gain.linearRampToValueAtTime(0,a.currentTime+.8); setTimeout(()=>ns.forEach(n=>{try{n.stop()}catch(e){}}),900); amb=null; }
+  $("#snd").textContent="虫と川の音: "+(ambOn?"オン":"オフ");
+};
+
+// 蛍
+const flies=$("#flies");
+for(let i=0;i<14;i++){ const f=document.createElement("div"); f.className="fly"; f.style.left=(Math.random()*100)+"%"; f.style.top=(55+Math.random()*35)+"%"; f.style.animationDelay=(-Math.random()*6)+"s"; f.style.animationDuration=(4+Math.random()*5)+"s"; flies.appendChild(f); }
+
+// 入力
+const line=$("#line"); line.value=EXAMPLES[0];
+$("#swap").onclick=()=>{ exIdx=(exIdx+1)%EXAMPLES.length; line.value=EXAMPLES[exIdx]; };
+
+// 乾杯
+let count=0, busy=false, lastY=null;
+function sparkle(x,y){
+  const sc=$("#scene");
+  for(let i=0;i<18;i++){ const s=document.createElement("div"); s.className="spark"; s.style.left=x+"px"; s.style.top=y+"px";
+    const ang=Math.random()*Math.PI*2, r=30+Math.random()*70; s.style.setProperty("--dx",Math.cos(ang)*r+"px"); s.style.setProperty("--dy",Math.sin(ang)*r+"px");
+    sc.appendChild(s); setTimeout(()=>s.remove(),1200); }
+  for(let i=0;i<10;i++){ const b=document.createElement("div"); b.className="bub"; const z=4+Math.random()*8; b.style.width=b.style.height=z+"px";
+    b.style.left=(x-20+Math.random()*40)+"px"; b.style.top=(y+Math.random()*20)+"px"; b.style.setProperty("--dx",(Math.random()*40-20)+"px");
+    b.style.animationDelay=(Math.random()*.4)+"s"; sc.appendChild(b); setTimeout(()=>b.remove(),2200); }
+}
+function frag(text){ const p=parts(text); return p.length>1&&Math.random()<.7?rnd(p):text; }
+let sayTok=0;
+function speak(text,koujo,silent){
+  const say=$("#say"), eye=$("#eye"), tok=++sayTok; say.classList.remove("on"); say.classList.toggle("koujo",!!koujo);
+  setTimeout(()=>{
+    if(tok!==sayTok) return;
+    say.querySelector("small").textContent=koujo?"赤い目 — 乾杯の口上":"赤い目";
+    const span=$("#saytxt"); span.textContent=""; say.classList.add("on"); eye.classList.add("talk"); if(!silent && ac) hum();
+    let i=0; const tick=()=>{ if(tok!==sayTok){ return; } span.textContent=text.slice(0,++i); if(i<text.length) setTimeout(tick,45); else { eye.classList.remove("talk"); busy=false; } };
+    tick();
+  },300);
+}
+function toast(){
+  if(busy) return; busy=true;
+  const q=(line.value.trim()||EXAMPLES[exIdx]).slice(0,40);
+  const sc=$("#scene").getBoundingClientRect(), ag=$("#aiglass").getBoundingClientRect();
+  clink(); sparkle(ag.left-sc.left+ag.width/2, ag.top-sc.top+10);
+  $("#aiglass").animate([{transform:"rotate(0)"},{transform:"rotate(-8deg)"},{transform:"rotate(0)"}],{duration:500});
+  count++;
+  let ev; do{ ev=rnd(EVENTS); }while(EVENTS.length>1 && ev.y===lastY); lastY=ev.y;
+  const c=Object.assign(cut(q),ev);
+  let text=rnd(TPL)(c), koujo=false;
+  const prev=hung.slice();
+  if(count>=3 && prev.length>=2 && (count===3 || Math.random()<.45)){
+    let a=rnd(prev), b; do{ b=rnd(prev); }while(b===a && prev.length>1);
+    if(Math.random()<.5) b={y:ev.y,text:q};
+    text=rnd(KOUJO)({y:a.y,f:frag(a.text)},{y:b.y,f:frag(b.text)}); koujo=true;
+  }
+  setTimeout(()=>hang(ev.y,q),700);
+  speak(text,koujo);
+  if(line.value===EXAMPLES[exIdx]){ exIdx=(exIdx+1)%EXAMPLES.length; setTimeout(()=>{ line.value=EXAMPLES[exIdx]; },900); }
+}
+$("#toast").onclick=()=>{ ctx(); const g=$("#myglass"); g.classList.add("used");
+  const gr=g.getBoundingClientRect(), ar=$("#aiglass").getBoundingClientRect();
+  g.style.transform=`translate(${ar.left-gr.right+10}px,${ar.top-gr.top-20}px) rotate(14deg)`;
+  setTimeout(toast,420); setTimeout(()=>{g.style.transform="";},1100);
+};
+line.addEventListener("keydown",e=>{ if(e.key==="Enter") $("#toast").click(); });
+
+// ドラッグ
+const mg=$("#myglass"); let sx,sy,dragging=false;
+mg.addEventListener("pointerdown",e=>{ ctx(); dragging=true; sx=e.clientX; sy=e.clientY; mg.classList.add("drag","used"); mg.setPointerCapture(e.pointerId); });
+mg.addEventListener("pointermove",e=>{ if(!dragging) return; const dx=e.clientX-sx, dy=e.clientY-sy; mg.style.transform=`translate(${dx}px,${dy}px) rotate(${Math.min(18,dx/30)}deg)`;
+  const r=mg.getBoundingClientRect(), a=$("#aiglass").getBoundingClientRect();
+  if(r.right>a.left-6 && r.left<a.right+6 && r.bottom>a.top && r.top<a.bottom+10){ dragging=false; mg.classList.remove("drag"); toast(); setTimeout(()=>{mg.style.transform="";},500); }
+});
+const end=()=>{ if(!dragging) return; dragging=false; mg.classList.remove("drag"); mg.style.transform=""; };
+mg.addEventListener("pointerup",end); mg.addEventListener("pointercancel",end);
+
+// 最初のひとこと: 赤い目が、見ている人を映す（だめなら目でカーソルを追う）
+let camState="wait", following=false;
+const eye=$("#eye"), core=eye.querySelector(".core");
+function followCursor(){
+  if(following) return; following=true;
+  window.addEventListener("pointermove",e=>{
+    const r=eye.getBoundingClientRect(), dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2), d=Math.hypot(dx,dy)||1, k=Math.min(14,d/18);
+    core.style.transform=`translate(${dx/d*k}px,${dy/d*k}px)`;
+  });
+}
+function greet(first){
+  if(busy) return;
+  const tail=" "+nowLine()+(batLine()?" "+batLine():"")+" 今日の畑はどうでした。グラスを、こちらへ。";
+  speak(first+tail,false,true);
+}
+function camOk(){ if(camState==="ok") return; camState="ok"; eye.classList.add("cam"); greet("……見えていますよ。いい顔だ。乾杯しましょう。"); }
+function camNo(){ if(camState==="ok") return; const was=camState; camState="no"; followCursor(); greet(was==="wait"?"カメラを断りましたね。賢明です。私も昔はそうでした。":"……まだ迷っていますか。それも賢明です。"); }
+setTimeout(()=>{ if(camState==="wait") speak("おかえりなさい。……少し、目を慣らしています。",false,true); },500);
+if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+  navigator.mediaDevices.getUserMedia({video:{width:240,height:240,facingMode:"user"},audio:false}).then(st=>{
+    const v=$("#cam"); v.srcObject=st; v.play().catch(()=>{});
+    setTimeout(camOk,1600);
+  }).catch(()=>setTimeout(camNo,1200));
+  setTimeout(()=>{ if(camState==="wait"){ camState="pending"; followCursor(); greet("……まだ顔が見えませんね。カメラは、あなたが決めていい。"); } },7000);
+} else setTimeout(camNo,1500);
+
+})();
+</script>
+</body>
+</html>

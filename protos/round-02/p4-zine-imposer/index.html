@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>面付け係の1枚折り豆本</title>
+<style>
+:root{--ink:#1d1b18;--paper:#f6f1e6;--red:#d0281e;--line:#bdb4a2;--c:#00a0e9;--m:#e4007f;--y:#ffe100;--k:#1d1b18}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;color:var(--ink);background:#d9d4c8;min-height:100vh}
+header{display:flex;align-items:baseline;gap:14px;padding:12px 22px;background:var(--ink);color:#f6f1e6}
+header h1{font-size:18px;margin:0;letter-spacing:.08em}
+header small{opacity:.7;font-size:12px}
+main{display:grid;grid-template-columns:340px 1fr;gap:18px;padding:16px 22px}
+.left{display:flex;flex-direction:column;gap:10px}
+label{font-size:13px;font-weight:700}
+textarea{width:100%;height:170px;padding:10px;font:14px/1.7 inherit;font-family:inherit;border:1px solid #9a917f;background:#fffdf7;border-radius:4px;resize:vertical}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:14px;font-weight:700;padding:9px 14px;border:2px solid var(--ink);background:#fffdf7;cursor:pointer;border-radius:3px}
+button.main{background:var(--ink);color:#fff}
+button:hover{transform:translateY(-1px)}
+button.on{background:var(--red);border-color:var(--red);color:#fff}
+.worker{background:#fffdf7;border:1px solid #b9b09d;padding:10px 12px;border-radius:4px;min-height:170px;position:relative}
+.worker h2{font-size:12px;margin:0 0 6px;color:#6b6352;font-weight:700}
+.status{font-size:12px;color:#6b6352;margin-bottom:6px;min-height:1.4em}
+.proof{color:var(--red);font-family:"Hiragino Maru Gothic ProN","Klee","Yu Gothic",cursive;font-size:14px;line-height:1.6;margin:6px 0;padding-left:46px;position:relative;opacity:0;transform:translateX(-6px);transition:.4s}
+.proof.show{opacity:1;transform:none}
+.proof .mk{position:absolute;left:0;top:1px;border:1.6px solid var(--red);border-radius:50%;width:38px;height:24px;font-size:11px;display:flex;align-items:center;justify-content:center;transform:rotate(-8deg);font-weight:700}
+.right{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+/* 刷り出し */
+.press{background:#fbf8f0;padding:30px 34px 34px;box-shadow:0 6px 20px rgba(0,0,0,.18);position:relative;width:100%;max-width:880px}
+.colorbar{position:absolute;top:8px;left:34px;right:34px;height:12px;display:flex;gap:2px}
+.colorbar i{flex:1}
+.reg{position:absolute;width:18px;height:18px}
+.slug{position:absolute;bottom:10px;left:34px;font-size:9px;color:#8a8270;letter-spacing:.05em;font-family:monospace}
+.sheet{position:relative;width:100%;aspect-ratio:297/210;background:#fff;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);overflow:hidden;outline:1px solid #e3ddcf}
+.panel{position:relative;container-type:inline-size;overflow:hidden}
+.panel.flip{transform:rotate(180deg)}
+.panel.drop{animation:drop .45s cubic-bezier(.3,1.4,.6,1) both}
+@keyframes drop{from{opacity:0;transform:translateY(-14px) scale(.96)}}
+.panel.flip.drop{animation-name:dropf}
+@keyframes dropf{from{opacity:0;transform:rotate(180deg) translateY(14px) scale(.96)}to{transform:rotate(180deg)}}
+.fold-v,.fold-h,.cut{position:absolute;pointer-events:none;z-index:3}
+.fold-v{top:0;bottom:0;border-left:1px dashed #aaa}
+.fold-h{left:0;right:0;top:50%;border-top:1px dashed #aaa}
+.cut{top:50%;left:25%;width:50%;border-top:1.5px solid #222;margin-top:-.5px}
+.cut::before{content:"✂";position:absolute;left:-14px;top:-10px;font-size:13px}
+.trim{position:absolute;width:12px;height:12px;z-index:4}
+.trim::before,.trim::after{content:"";position:absolute;background:#222}
+.trim::before{left:50%;top:0;bottom:0;width:.6px}
+.trim::after{top:50%;left:0;right:0;height:.6px}
+.redmark{position:absolute;z-index:5;color:var(--red);border:1.5px solid var(--red);border-radius:50%;padding:1px 7px;font-size:11px;font-weight:700;background:rgba(255,255,255,.75);transform:rotate(-10deg);font-family:"Hiragino Maru Gothic ProN",cursive;white-space:nowrap}
+/* ページの中身（cqw = 1面の幅基準） */
+.pg{position:absolute;inset:0;padding:9cqw;display:flex;flex-direction:column;justify-content:center;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;color:var(--ink)}
+.pg .nb{position:absolute;bottom:3.5cqw;font-size:4.5cqw;font-family:monospace;color:#555}
+.pg .nb.r{right:5cqw}.pg .nb.l{left:5cqw}
+.pg .tx{line-height:1.55;word-break:break-all}
+.L-tate .tx{writing-mode:vertical-rl;height:100%;margin:0 auto;letter-spacing:.12em}
+.L-yoko .tx{border-bottom:.8cqw solid var(--ink);padding-bottom:3cqw}
+.L-big1 .big{position:absolute;left:-6cqw;top:8cqw;font-size:105cqw;line-height:1;color:#ece6d8;font-weight:900;z-index:0}
+.L-big1 .tx{position:relative;z-index:1;margin-top:auto;font-weight:700}
+.L-dots{background:radial-gradient(circle,var(--dot,#e4007f) 2.4cqw,transparent 2.6cqw) 0 0/11cqw 11cqw}
+.L-dots .tx{background:#fff;padding:5cqw;border:.6cqw solid var(--ink)}
+.L-tombo .tx{text-align:center}
+.L-tombo .tm{position:absolute;width:10cqw;height:10cqw;border-color:var(--ink);border-style:solid;border-width:0}
+.L-ink{background:var(--ink);color:#fbf8f0}
+.L-ink .tx{font-family:"Hiragino Sans",sans-serif;font-weight:800}
+.L-ink .nb{color:#bbb}
+.cover{justify-content:space-between;background:#fbf3df}
+.cover .kicker{font-size:5cqw;letter-spacing:.2em;font-family:"Hiragino Sans",sans-serif}
+.cover .ttl{font-weight:900;line-height:1.1;word-break:break-all}
+.cover .sub{font-size:5.4cqw;border-top:.6cqw solid var(--ink);padding-top:3cqw}
+.cover .sun{position:absolute;right:-12cqw;top:22cqw;width:52cqw;height:52cqw;border-radius:50%;background:var(--sun,#e4007f);opacity:.85;mix-blend-mode:multiply}
+.back{font-family:"Hiragino Sans",sans-serif;justify-content:flex-end}
+.back .colo{border-top:.6cqw solid var(--ink);border-bottom:.6cqw solid var(--ink);padding:3cqw 0;font-size:4.8cqw;line-height:1.75}
+.back .colo b{display:block;font-size:6cqw;margin-bottom:2cqw;font-family:"Hiragino Mincho ProN",serif}
+.back .bar{display:flex;gap:.6cqw;height:8cqw;margin-top:5cqw}
+.back .bar i{background:var(--ink)}
+/* プレビュー */
+.viewer{display:none;flex-direction:column;align-items:center;gap:10px;width:100%}
+.stage{perspective:1400px;padding:10px}
+.pv{width:min(300px,70vw);aspect-ratio:74.25/105;position:relative;container-type:inline-size;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transform-origin:left center;overflow:hidden}
+.pv.turn{animation:turn .45s ease-out}
+@keyframes turn{from{transform:rotateY(-70deg);opacity:.3}}
+.pvnav{display:flex;gap:10px;align-items:center;font-size:14px}
+.fold{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+.fold figure{margin:0;text-align:center;font-size:11px;color:#5d5647;width:120px}
+.fold svg{width:110px;height:64px;display:block;margin:0 auto 2px}
+.note{font-size:12px;color:#5d5647}
+@media (max-width:820px){main{grid-template-columns:1fr;padding:10px}.press{padding:22px 14px 26px}}
+/* 開幕: ページ自体が面付けされて折れる */
+#intro{position:fixed;inset:0;z-index:100;background:#d9d4c8;overflow:hidden;perspective:2000px;transition:opacity .6s}
+#intro.gone{opacity:0;pointer-events:none}
+.ibox{position:absolute;transform-style:preserve-3d}
+.win{position:absolute;overflow:hidden;background:#fbf8f0}
+.flapc{position:absolute;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.55,0,.3,1)}
+.flapc>.face{position:absolute;inset:0;backface-visibility:hidden}
+.flapc>.backf{background:linear-gradient(135deg,#efe8d8,#e2dac6);transform:rotateY(180deg)}
+.flapc.x>.backf{transform:rotateX(180deg)}
+.ipanel{position:absolute;overflow:hidden;transition:transform .6s cubic-bezier(.3,1.4,.6,1),box-shadow .6s;background:#fbf8f0}
+.ipanel.imp{box-shadow:0 0 0 1px #c9c0ad}
+.poster{position:absolute;background:#fbf8f0;font-family:"Hiragino Sans",sans-serif;color:var(--ink)}
+.poster .ph{background:var(--ink);color:#f6f1e6;padding:.8em 1.4em;font-weight:700;font-size:1.1em}
+.poster .pt{font-family:"Hiragino Mincho ProN",serif;font-size:3.4em;font-weight:900;margin:.5em .6em .2em;line-height:1.15}
+.poster .pd{margin:0 1.5em;font-size:1.05em;line-height:1.8}
+.poster .pa{margin:1em 1.5em;border:1px solid #9a917f;background:#fffdf7;padding:.7em;font-size:.95em;line-height:1.8;width:48%}
+.poster .pb{display:inline-block;margin:0 0 0 1.5em;border:2px solid var(--ink);padding:.4em .9em;font-weight:700;background:var(--ink);color:#fff}
+.poster .pr{position:absolute;right:6%;top:30%;width:30%;aspect-ratio:1;border-radius:50%;border:.5em solid var(--red);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:7em;font-family:"Hiragino Mincho ProN",serif;font-weight:900;transform:rotate(-8deg)}
+.say{position:absolute;z-index:5;color:var(--red);font-family:"Hiragino Maru Gothic ProN",cursive;font-weight:700;font-size:clamp(16px,2.4vw,28px);border:2.5px solid var(--red);border-radius:40% 45% 42% 48%;padding:.3em 1em;background:rgba(255,255,255,.85);transform:rotate(-4deg) scale(.6);opacity:0;transition:.35s cubic-bezier(.3,1.6,.6,1);white-space:nowrap}
+.say.show{opacity:1;transform:rotate(-4deg) scale(1)}
+#skip{position:absolute;right:14px;bottom:14px;z-index:6;font-size:12px;padding:5px 10px;background:transparent;border:1px solid #8a8270;color:#5d5647}
+#booklet{position:absolute;cursor:pointer;transform-style:preserve-3d;transition:left .7s cubic-bezier(.3,1.5,.6,1),top .7s cubic-bezier(.3,1.5,.6,1),transform .7s cubic-bezier(.3,1.5,.6,1)}
+#booklet .bk{position:absolute;inset:0;background:#fbf3df;box-shadow:4px 6px 16px rgba(0,0,0,.3);border-left:3px solid #c9bfa8;transform-origin:left center;transition:transform .7s;display:flex;flex-direction:column;justify-content:space-between;padding:12% 10%;font-family:"Hiragino Mincho ProN",serif;overflow:hidden}
+#booklet .bk b{font-size:clamp(14px,2vw,24px);line-height:1.2;position:relative}
+#booklet .bk small{font-family:"Hiragino Sans",sans-serif;font-size:11px;position:relative}
+#booklet .bk i{position:absolute;right:-25%;top:25%;width:70%;aspect-ratio:1;border-radius:50%;background:#e4007f;opacity:.8}
+#booklet .inside{position:absolute;inset:0;background:#fff;box-shadow:4px 6px 16px rgba(0,0,0,.2)}
+#booklet.open .bk{transform:rotateY(-170deg)}
+#booklet .hint{position:absolute;top:104%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;color:#5d5647;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.3}}
+#upside{position:fixed;left:0;right:0;top:0;z-index:200;transform:rotate(180deg);background:var(--red);color:#fff;text-align:center;padding:14px;font-weight:700;display:none}
+@page{size:A4 landscape;margin:0}
+@media print{
+  #intro,#upside,header,.left,.viewer,.fold,.note,.colorbar,.reg,.slug,.redmark,.btns{display:none!important}
+  body,main,.right,.press{background:#fff;margin:0;padding:0;box-shadow:none;display:block}
+  .press{max-width:none}
+  .sheet{width:297mm;height:210mm;aspect-ratio:auto;outline:none;display:grid!important}
+  .panel.drop{animation:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="intro"><div class="say" id="say"></div><button id="skip">とばす</button></div>
+<div id="upside">逆さにしましたね。上段はいま、ちゃんと読めています。印刷所の人は、いつもこっち側から読んでいます。</div>
+<header><h1>面付け係の 1 枚折り豆本</h1><small>A4 1 枚・切り込み 1 本・8 ページ。刷って、折って、隣の人に 1 冊。</small></header>
+<main>
+<section class="left">
+  <label for="src">今日いちばん覚えていること（3〜5 行）</label>
+  <textarea id="src">今朝、港の朝市でカツオのたたきを立ったまま食べた
+午後は川沿いの古い倉庫で、ずっとホワイトボードに付箋を貼っていた
+誰かが言った「それ、紙にしたら？」がまだ耳に残っている
+夕方の雨で、作りかけの模型がすこし濡れた
+帰り道、自販機の明かりがやけに明るかった</textarea>
+  <div class="btns">
+    <button class="main" id="impose">面付けする</button>
+    <button id="flipBtn">折ったらこうなる</button>
+    <button id="printBtn">印刷する</button>
+  </div>
+  <div class="worker">
+    <h2>AI 面付け係（勤続三十年・架空）の赤字</h2>
+    <div class="status" id="status">―</div>
+    <div id="proofs"></div>
+  </div>
+  <div class="note">押すたびに割付が変わります。同じ原稿でも、同じ本は二度と刷れません。</div>
+</section>
+<section class="right">
+  <div class="press" id="press">
+    <div class="colorbar" id="colorbar"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="slug" id="slug"></div>
+  </div>
+  <div class="viewer" id="viewer">
+    <div class="stage"><div class="pv" id="pv"></div></div>
+    <div class="pvnav"><button id="prev">← 前</button><span id="pvn">1 / 8</span><button id="next">次 →</button></div>
+  </div>
+  <div class="fold" id="fold"></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const R=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- 音（最初のクリックで開始） ---------- */
+let AC=null;
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}return AC}
+function thump(t0=0){const a=audio();if(!a)return;const t=a.currentTime+t0;
+  const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.15);
+  g.gain.setValueAtTime(.35,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.22);
+  noise(t0,.06,.12,2500)}
+function noise(t0,dur,vol,freq){const a=audio();if(!a)return;const t=a.currentTime+t0;
+  const b=a.createBuffer(1,a.sampleRate*dur,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();s.buffer=b;f.type='bandpass';f.frequency.value=freq;g.gain.value=vol;
+  s.connect(f).connect(g).connect(a.destination);s.start(t)}
+const swish=()=>noise(0,.18,.25,1800);
+
+/* ---------- 原稿を切る ---------- */
+function cutLine(seg){
+  // 助詞（は が を に で も へ）のあと、次が漢字・カタカナなら切る
+  const parts=[];let cur='';
+  for(let i=0;i<seg.length;i++){cur+=seg[i];
+    if('はがをにでもへ'.includes(seg[i])&&i<seg.length-1&&/[一-鿿ァ-ヴー]/.test(seg[i+1])&&cur.length>=3){parts.push(cur);cur=''}}
+  if(cur)parts.length&&cur.length<3?parts[parts.length-1]+=cur:parts.push(cur);
+  return parts;
+}
+function fragments(text){
+  const out=[];
+  text.split(/\n+/).map(s=>s.trim()).filter(Boolean).forEach(line=>{
+    line.replace(/[「」『』"]/g,'').split(/[、。！？!?,，．.]/).map(s=>s.trim()).filter(Boolean).forEach(seg=>{
+      if(seg.length>12)cutLine(seg).forEach(p=>out.push(p));else out.push(seg);
+    });
+  });
+  return out.map(s=>s.replace(/^[はがをにでもへのと]+/,'')).filter(s=>s.length>=2);
+}
+function words(text){
+  const w=(text.match(/[ァ-ヴー]{2,}|[一-鿿]{2,}(?=[のでにをがはへと、。！？\n]|$)/g)||[]);
+  return [...new Set(w)];
+}
+const stripTail=s=>s.replace(/[はがをにでもへのと]$/,'');
+
+/* ---------- 割り付け ---------- */
+// 面付け: 上段（天地逆）5 4 3 2 ／ 下段 6 7 8 1
+const IMPO=[5,4,3,2,6,7,8,1];
+const LAYOUTS=['tate','yoko','big1','dots','tombo','ink'];
+const INKS=['#e4007f','#00a0e9','#f39800','#009e73','#ffe100'];
+const JOIN=[
+  (a,b)=>`${a}、${b}`,
+  (a,b)=>`${b}。それから、${a}`,
+  (a,b)=>`${stripTail(a)}のことを、${b}`,
+  (a,b)=>`（${a}）${b}`,
+  (a,b)=>`${b}のは、${stripTail(a)}`
+];
+let BOOK=null;
+
+function makeBook(text){
+  const fr=fragments(text);
+  const ws=words(text);
+  if(!fr.length)fr.push('今日は何も覚えていない');
+  const titleWord=ws.length?R(ws.filter(w=>w.length<=6).length?ws.filter(w=>w.length<=6):ws):stripTail(fr[0]).slice(0,5);
+  const coverFrag=fr.find(f=>f.includes(titleWord))||R(fr);
+  let pool=shuffle(fr.filter(f=>f!==coverFrag));
+  while(pool.length<9)pool=pool.concat(shuffle(fr));
+  const facts={titleWord,coverFrag,joins:[],swaps:[],big:null,ws};
+  const pages=[];
+  const ink=R(INKS);
+  pages[1]={kind:'cover',title:titleWord,sub:coverFrag,ink,kicker:R(['豆本 第一号','ZINE vol.1','きょうの一冊','手折り本'])};
+  let used=0,layouts=shuffle(LAYOUTS);
+  for(let n=2;n<=7;n++){
+    let t,lay=layouts[(n-2)%layouts.length];
+    const r=Math.random();
+    if(r<.3&&pool.length-used>=2){
+      const a=pool[used++],b=pool[used++];t=R(JOIN)(a,b);facts.joins.push({a,b,n});
+    }else if(r<.45){
+      const a=pool[used++];const p=cutLine(a);
+      if(p.length>=2){t=p.slice(1).join('')+'、'+p[0].replace(/[はがをにでもへ]$/,'');facts.swaps.push({a,n})}else t=a;
+    }else t=pool[used++];
+    if(lay==='big1'){const c=(t.match(/[一-鿿ァ-ヴ]/)||[t[0]])[0];facts.big={c,n};pages[n]={kind:'body',t,lay,c,n}}
+    else pages[n]={kind:'body',t,lay,n,dot:R(INKS)};
+  }
+  const pub=new Date();
+  pages[8]={kind:'back',title:titleWord,ink,colo:[
+    `発行日：${pub.getFullYear()}年${pub.getMonth()+1}月${pub.getDate()}日`,
+    '発行：'+R(['ゆうべの自分','きょうの自分','まだ眠い自分','あしたの自分（予定）']),
+    '面付け：AI 面付け係',
+    `刷了：${pub.getFullYear()}-${String(pub.getMonth()+1).padStart(2,'0')}-${String(pub.getDate()).padStart(2,'0')} ${String(pub.getHours()).padStart(2,'0')}:${String(pub.getMinutes()).padStart(2,'0')}`,
+    '刷数：1','誤植：'+R(['あり','あり（意図的）','たぶんあり']),
+    '定価：'+R(['照れ笑いひとつ','相づち一回','無料（返品不可）','お茶一杯']),
+    '製本：'+R(['手折り','切り込み一本','あなたの指'])
+  ]};
+  const body=pages.slice(1,8).map(p=>p.t||p.title||'').join('');facts.unused=ws.filter(w=>!body.includes(w)&&w!==titleWord);
+  return {pages,facts};
+}
+
+function fs(len,k){return Math.max(7,Math.min(k||24,Math.sqrt(8000/(1.5*Math.max(len,1)))*.85)).toFixed(1)}
+function renderPage(p,n){
+  const side=n%2===0?'l':'r';
+  const nb=`<span class="nb ${side}">${n===1||n===8?'':n}</span>`;
+  if(p.kind==='cover'){
+    const s=Math.min(38,Math.floor(84/Math.max(p.title.length,1)));
+    return `<div class="pg cover" style="--sun:${p.ink}"><div class="sun"></div><div class="kicker">${esc(p.kicker)}</div><div class="ttl" style="font-size:${s}cqw">${esc(p.title)}</div><div class="sub">${esc(p.sub)}</div></div>`;
+  }
+  if(p.kind==='back'){
+    const bars=[3,1,2,1,4,1,1,3,2,1,1,2,3,1].map(w=>`<i style="width:${w}cqw"></i>`).join('');
+    return `<div class="pg back"><div class="colo"><b>『${esc(p.title)}』</b>${p.colo.map(esc).join('<br>')}</div><div class="bar">${bars}</div></div>`;
+  }
+  const t=esc(p.t),f=fs(p.t.length,p.lay==='tate'?20:24);
+  switch(p.lay){
+    case 'tate':return `<div class="pg L-tate"><div class="tx" style="font-size:${f}cqw">${t}</div>${nb}</div>`;
+    case 'yoko':return `<div class="pg L-yoko"><div class="tx" style="font-size:${f}cqw">${t}</div>${nb}</div>`;
+    case 'big1':return `<div class="pg L-big1"><div class="big">${esc(p.c)}</div><div class="tx" style="font-size:${Math.min(f,12)}cqw">${t}</div>${nb}</div>`;
+    case 'dots':return `<div class="pg L-dots" style="--dot:${p.dot}"><div class="tx" style="font-size:${Math.min(f,14)}cqw">${t}</div>${nb}</div>`;
+    case 'tombo':{const tm=['top:6cqw;left:6cqw;border-top-width:.5cqw;border-left-width:.5cqw','top:6cqw;right:6cqw;border-top-width:.5cqw;border-right-width:.5cqw','bottom:10cqw;left:6cqw;border-bottom-width:.5cqw;border-left-width:.5cqw','bottom:10cqw;right:6cqw;border-bottom-width:.5cqw;border-right-width:.5cqw'].map(s=>`<i class="tm" style="${s}"></i>`).join('');
+      return `<div class="pg L-tombo">${tm}<div class="tx" style="font-size:${f}cqw">${t}</div>${nb}</div>`}
+    default:return `<div class="pg L-ink"><div class="tx" style="font-size:${f}cqw">${t}</div>${nb}</div>`;
+  }
+}
+
+/* ---------- 刷り出し ---------- */
+function drawSheet(animate){
+  const sh=$('#sheet');sh.innerHTML='';
+  IMPO.forEach((n,i)=>{
+    const d=document.createElement('div');d.className='panel'+(i<4?' flip':'')+(animate?' drop':'');
+    if(animate)d.style.animationDelay=(i*.09)+'s';
+    d.dataset.page=n;d.innerHTML=renderPage(BOOK.pages[n],n);sh.appendChild(d);
+  });
+  [25,50,75].forEach(x=>{const v=document.createElement('div');v.className='fold-v';v.style.left=x+'%';sh.appendChild(v)});
+  sh.insertAdjacentHTML('beforeend','<div class="fold-h"></div><div class="cut"></div>');
+  [['top:3px;left:3px'],['top:3px;right:3px'],['bottom:3px;left:3px'],['bottom:3px;right:3px']].forEach(([s])=>sh.insertAdjacentHTML('beforeend',`<i class="trim" style="${s}"></i>`));
+  // 赤字の書き込み（画面のみ）
+  const marks=[];
+  const pos=n=>{const i=IMPO.indexOf(n);return {x:(i%4)*25,y:i<4?0:50}};
+  const c=pos(1);marks.push({...c,t:'表紙↑',dx:10,dy:6});
+  BOOK.facts.joins.forEach(j=>{const p=pos(j.n);marks.push({...p,t:'つなぐ',dx:3,dy:38})});
+  BOOK.facts.swaps.forEach(j=>{const p=pos(j.n);marks.push({...p,t:'入替',dx:13,dy:40})});
+  if(BOOK.facts.big){const p=pos(BOOK.facts.big.n);marks.push({...p,t:'大',dx:16,dy:4})}
+  marks.push({...pos(R([2,3,4,5])),t:'天地逆ママ',dx:4,dy:20});
+  marks.forEach((m,k)=>{const e=document.createElement('span');e.className='redmark';e.textContent=m.t;
+    e.style.left=(m.x+m.dx*.25*4/4)+'%';e.style.top=(m.y+m.dy)+'%';e.style.transform=`rotate(${-14+Math.random()*16}deg)`;
+    if(animate){e.style.opacity=0;setTimeout(()=>{e.style.transition='.3s';e.style.opacity=1},900+k*220)}sh.appendChild(e)});
+}
+function drawPressMarks(){
+  const cb=$('#colorbar');
+  cb.innerHTML=['var(--c)','var(--m)','var(--y)','var(--k)','#3a7bd5','#d33','#2a2','#eee','#ccc','#999','#666','#333','var(--c)','var(--m)','var(--y)','var(--k)'].map(c=>`<i style="background:${c}"></i>`).join('');
+  const reg='<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#222" stroke-width="1"/><circle cx="10" cy="10" r="2.5" fill="#222"/><path d="M10 0V20M0 10H20" stroke="#222" stroke-width=".7"/></svg>';
+  const pr=$('#press');
+  [['left:8px;top:50%;margin-top:-9px'],['right:8px;top:50%;margin-top:-9px'],['bottom:8px;left:50%;margin-left:-9px']].forEach(([s])=>pr.insertAdjacentHTML('beforeend',`<div class="reg" style="${s}">${reg}</div>`));
+}
+
+/* ---------- 赤字（面付け係の一言） ---------- */
+function proofs(f){
+  const q=s=>`『${s.length>14?s.slice(0,14)+'…':s}』`;
+  const out=[];
+  out.push(['表紙',R([
+    `${q(f.titleWord)}は表紙に上げました。本人は照れるでしょうが。`,
+    `表紙は${q(f.titleWord)}一語で行きます。ほかの言葉には悪いけど。`,
+    `${q(f.titleWord)}を三倍の大きさに。原稿では小さく書いてありましたね。`,
+    `原稿の中で${q(f.titleWord)}だけ声が大きかったので、表紙です。`])]);
+  if(f.joins.length){const j=R(f.joins);out.push(['つなぐ',R([
+    `p.${j.n} で${q(j.a)}と${q(j.b)}をくっつけました。原稿では離れていましたが、隣が似合う。`,
+    `${q(j.a)}のあとに${q(j.b)}を置きました。順番は面付けの都合、ということにしておきます。`,
+    `${q(j.b)}は${q(j.a)}の続きだと読みました。違っていたら、それも誤植です。`])])}
+  if(f.swaps.length){const s=R(f.swaps);out.push(['入替',R([
+    `p.${s.n} の${q(s.a)}は前後を入れ替えました。誤植ではありません。たぶん。`,
+    `${q(s.a)}を後ろから組みました。こっちのほうが本当っぽいので。`])])}
+  if(f.big)out.push(['大',R([
+    `p.${f.big.n} は『${f.big.c}』の一文字だけ特大で。読めなくても伝わります。`,
+    `『${f.big.c}』を背景に敷きました。インキは多めに使っています。`])]);
+  out.push([R(['ママ','トル','イキ']),R([
+    '上の段は天地逆ですが、折れば戻ります。',
+    '刷数 1。増刷はしません。',
+    '奥付に「誤植：あり」と書いておきました。先に言っておけば怖くない。',
+    'トンボは合わせました。あとは手で折ってください。',
+    f.unused.length?`${q(R(f.unused))}は今回は使いませんでした。次の号で。`:'余白は残しておきました。書き足していいです。'])]);
+  return out.slice(0,4);
+}
+function showProofs(list,animate){
+  const box=$('#proofs');box.innerHTML='';
+  list.forEach(([mk,t],i)=>{const d=document.createElement('div');d.className='proof';d.innerHTML=`<span class="mk">${esc(mk)}</span>${esc(t)}`;box.appendChild(d);
+    setTimeout(()=>d.classList.add('show'),animate?1000+i*420:0)});
+}
+
+/* ---------- プレビュー ---------- */
+let pvi=1,mode='sheet';
+function showPv(dir){const pv=$('#pv');pv.innerHTML=renderPage(BOOK.pages[pvi],pvi);$('#pvn').textContent=`${pvi} / 8`;
+  if(dir){pv.classList.remove('turn');void pv.offsetWidth;pv.classList.add('turn');swish()}}
+function setMode(m){mode=m;$('#press').style.display=m==='sheet'?'':'none';$('#viewer').style.display=m==='book'?'flex':'none';
+  $('#flipBtn').classList.toggle('on',m==='book');$('#flipBtn').textContent=m==='book'?'面付け図に戻す':'折ったらこうなる';if(m==='book'){pvi=1;showPv()}}
+
+/* ---------- 折り方 4 コマ ---------- */
+function drawFold(){
+  const rect='<rect x="15" y="8" width="80" height="48" fill="#fff" stroke="#333"/>';
+  const k=[
+    ['① 横に半分',`${rect}<path d="M15 32H95" stroke="#888" stroke-dasharray="3 2"/><path d="M100 14q10 18 0 36" fill="none" stroke="#d0281e" marker-end="url(#a)"/>`],
+    ['② さらに半分',`<rect x="15" y="20" width="80" height="24" fill="#fff" stroke="#333"/><path d="M55 20V44" stroke="#888" stroke-dasharray="3 2"/><path d="M90 14q-30-12-30 4" fill="none" stroke="#d0281e" marker-end="url(#a)"/>`],
+    ['③ もう半分→開く',`<rect x="35" y="20" width="40" height="24" fill="#fff" stroke="#333"/><path d="M55 20V44" stroke="#888" stroke-dasharray="3 2"/><path d="M80 14q-12-10-22 2" fill="none" stroke="#d0281e" marker-end="url(#a)"/>`],
+    ['④ 中央を切って押し込む',`${rect}<path d="M35 32H75" stroke="#d0281e" stroke-width="2"/><text x="49" y="28" font-size="9">✂</text><path d="M4 32h9M106 32h-9" stroke="#d0281e" marker-end="url(#a)"/>`]];
+  $('#fold').innerHTML=k.map(([c,s])=>`<figure><svg viewBox="0 0 110 64"><defs><marker id="a" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L6 3L0 6z" fill="#d0281e"/></marker></defs>${s}</svg>${c}</figure>`).join('');
+}
+
+/* ---------- 実行 ---------- */
+let busy=false;
+function impose(animate){
+  if(busy)return;busy=animate;
+  BOOK=makeBook($('#src').value);
+  if(mode==='book')setMode('sheet');
+  const steps=['原稿を読んでいます…','読点と助詞で切っています…','8 面に割り付けています…','上段の天地を返しています…','トンボを合わせました。'];
+  if(animate){steps.forEach((s,i)=>setTimeout(()=>{$('#status').textContent=s;if(i===2)for(let k=0;k<8;k++)thump(k*.09)},i*230));setTimeout(()=>busy=false,1300)}
+  else $('#status').textContent=steps[4];
+  drawSheet(animate);showProofs(proofs(BOOK.facts),animate);
+  const d=new Date();$('#slug').textContent=`ZINE-8P  A4 横 1 面 8 丁付け  刷り出し ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}  色：4C  刷数：1`;
+}
+$('#impose').onclick=()=>{audio();impose(true)};
+$('#flipBtn').onclick=()=>{audio();swish();setMode(mode==='book'?'sheet':'book')};
+$('#prev').onclick=()=>{if(pvi>1){pvi--;showPv(1)}};
+$('#next').onclick=()=>{if(pvi<8){pvi++;showPv(1)}};
+document.addEventListener('keydown',e=>{if(mode!=='book')return;if(e.key==='ArrowRight')$('#next').click();if(e.key==='ArrowLeft')$('#prev').click()});
+$('#printBtn').onclick=()=>{audio();if(mode==='book')setMode('sheet');thump();setTimeout(()=>window.print(),150)};
+drawPressMarks();drawFold();impose(false);
+/* ---------- 開幕: このページ自体を面付けして折る ---------- */
+function intro(){
+  const ov=$('#intro'),say=$('#say');
+  const W=Math.min(innerWidth*.9,1100,(innerHeight*.78)*297/210),H=W*210/297;
+  const SX=(innerWidth-W)/2,SY=(innerHeight-H)/2;
+  const src=$('#src').value.split('\n').map(esc).join('<br>');
+  const poster=()=>{const p=document.createElement('div');p.className='poster';p.style.cssText=`width:${W}px;height:${H}px;font-size:${W/62}px`;
+    p.innerHTML=`<div class="ph">面付け係の 1 枚折り豆本 <span style="opacity:.6;font-weight:400">A4 1 枚・切り込み 1 本・8 ページ</span></div><div class="pt">今日いちばん<br>覚えていることを、<br>本にします。</div><div class="pd">刷って、折って、隣の人に 1 冊。押すたびに、別の本になります。</div><div class="pa">${src}</div><span class="pb">面付けする</span><div class="pr">刷</div>`;return p};
+  const sheet=imp=>{const s=document.createElement('div');s.style.cssText=`position:absolute;left:0;top:0;width:${W}px;height:${H}px`;
+    for(let i=0;i<8;i++){const c=i%4,r=i<4?0:1,d=document.createElement('div');d.className='ipanel'+(imp?' imp':'');
+      d.style.cssText=`left:${c*W/4}px;top:${r*H/2}px;width:${W/4}px;height:${H/2}px;${imp&&r===0?'transform:rotate(180deg)':''}`;
+      const po=poster();po.style.left=-c*W/4+'px';po.style.top=-r*H/2+'px';d.appendChild(po);d.dataset.r=r;s.appendChild(d)}
+    return s};
+  const win=(x,y,w,h,bx,by)=>{const d=document.createElement('div');d.className='win';d.style.cssText=`left:${x-bx}px;top:${y-by}px;width:${w}px;height:${h}px`;
+    const s=sheet(true);s.style.left=-x+'px';s.style.top=-y+'px';d.appendChild(s);return d};
+  const box=(bx,by,bw,bh)=>{ov.querySelectorAll('.ibox').forEach(e=>e.remove());const b=document.createElement('div');b.className='ibox';
+    b.style.cssText=`left:${SX+bx}px;top:${SY+by}px;width:${bw}px;height:${bh}px`;ov.appendChild(b);return b};
+  // 折り 1 段: st=止まる側, fl=折る側, ax='x'（上が下へ）or 'y'（右が左へ）
+  const fold=(bx,by,bw,bh,st,fl,ax)=>{const b=box(bx,by,bw,bh);b.appendChild(win(...st,bx,by));
+    const f=document.createElement('div');f.className='flapc '+ax;f.style.cssText=`left:${fl[0]-bx}px;top:${fl[1]-by}px;width:${fl[2]}px;height:${fl[3]}px;transform-origin:${ax==='x'?'50% 100%':'0 50%'}`;
+    const fr=win(...fl,fl[0],fl[1]);fr.classList.add('face');fr.style.left=fr.style.top='0';const bk=document.createElement('div');bk.className='face backf';f.append(fr,bk);b.appendChild(f);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{f.style.transform=ax==='x'?'rotateX(-178deg)':'rotateY(-178deg)';paper()}))};
+  const T=[];const at=(ms,fn)=>T.push(setTimeout(fn,ms));
+  const speak=(t,x,y)=>{say.classList.remove('show');setTimeout(()=>{say.textContent=t;say.style.left=x+'px';say.style.top=y+'px';say.classList.add('show')},120)};
+  // 0: ふつうのページに見える
+  const b0=box(0,0,W,H),s0=sheet(false);b0.appendChild(s0);
+  at(900,()=>{s0.querySelectorAll('.ipanel').forEach((d,i)=>{setTimeout(()=>{d.classList.add('imp');if(d.dataset.r==='0')d.style.transform='rotate(180deg)';thump()},i*110)})});
+  at(2000,()=>speak('上段は逆さが正しいんです。',SX+W*.18,SY+H*.18));
+  at(3700,()=>speak('では、折ります。',SX+W*.55,SY-40>4?SY-40:4));
+  at(4100,()=>{say.classList.remove('show');fold(0,0,W,H,[0,H/2,W,H/2],[0,0,W,H/2],'x')});
+  at(5100,()=>fold(0,H/2,W,H/2,[0,H/2,W/2,H/2],[W/2,H/2,W/2,H/2],'y'));
+  at(6100,()=>fold(0,H/2,W/2,H/2,[0,H/2,W/4,H/2],[W/4,H/2,W/4,H/2],'y'));
+  at(7100,()=>{ov.querySelectorAll('.ibox').forEach(e=>e.remove());
+    const bk=document.createElement('div');bk.id='booklet';bk.style.cssText=`left:${SX}px;top:${SY+H/2}px;width:${W/4}px;height:${H/2}px`;
+    bk.innerHTML='<div class="inside"></div><div class="bk"><i></i><b>面付け係の<br>豆本</b><small>第一号・刷数 1</small></div><div class="hint">クリックでひらく</div>';ov.appendChild(bk);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{const bw=W/4,bh=H/2;bk.style.left=(innerWidth-bw)/2+'px';bk.style.top=(innerHeight-bh)/2+'px';bk.style.transform='scale(1.25) rotate(-3deg)'}));
+    setTimeout(()=>{thump();speak('一冊できました。',innerWidth/2-90,(innerHeight-H/2*1.25)/2-60)},650);
+    bk.onclick=openBook});
+  function openBook(){audio();paper();T.forEach(clearTimeout);const bk=$('#booklet');if(bk)bk.classList.add('open');
+    if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)DeviceOrientationEvent.requestPermission().catch(()=>{});
+    setTimeout(()=>{ov.classList.add('gone');setTimeout(()=>ov.remove(),650)},bk?650:0)}
+  $('#skip').onclick=openBook;
+}
+function paper(){noise(0,.35,.3,900);noise(.05,.2,.15,3200)}
+document.addEventListener('pointerdown',()=>{const a=audio();if(a&&a.state==='suspended')a.resume()},{once:true});
+// スマホを逆さにすると隠しの一言
+window.addEventListener('deviceorientation',e=>{if(e.beta==null)return;$('#upside').style.display=e.beta<-40?'block':'none'});
+intro();
+</script>
+</body>
+</html>

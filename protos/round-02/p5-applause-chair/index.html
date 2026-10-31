@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>どよめき議長</title>
+<style>
+:root{--bg:#15110d;--panel:#211a14;--gold:#e8b04b;--gold2:#f6d58a;--red:#e0483e;--ink:#f7efe2;--dim:#a8977f;--green:#5fc27a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 0%,#2c2118 0%,var(--bg) 70%);color:var(--ink);font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer}
+.screen{display:none;min-height:100vh;padding:24px 4vw}
+.screen.on{display:flex;flex-direction:column}
+h1{font-size:clamp(36px,5vw,64px);margin:0;letter-spacing:.08em;color:var(--gold)}
+.sub{color:var(--dim);font-size:clamp(14px,1.4vw,20px);margin:6px 0 18px}
+/* setup */
+#setup{align-items:center;justify-content:center;gap:10px}
+.form{width:min(900px,100%);display:flex;flex-direction:column;gap:10px}
+.form label{font-size:16px;color:var(--dim)}
+.form input[type=text]{width:100%;font-size:clamp(18px,2vw,28px);padding:10px 14px;border-radius:10px;border:2px solid #4a3b2c;background:#100c09;color:var(--ink)}
+.form input:focus{outline:none;border-color:var(--gold)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.big{font-size:clamp(22px,2.6vw,36px);font-weight:800;padding:14px 48px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2a1a08;box-shadow:0 6px 0 #8a5e1c}
+.big:active{transform:translateY(4px);box-shadow:0 2px 0 #8a5e1c}
+.ghostbtn{font-size:16px;padding:10px 20px;border-radius:999px;border:2px solid #5a4733;background:transparent;color:var(--ink)}
+.chk{font-size:16px;color:var(--dim);display:flex;gap:6px;align-items:center}
+/* stage */
+#stage{padding:16px 3vw;gap:8px;height:100vh}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.agenda{font-size:clamp(20px,2.6vw,36px);font-weight:700}
+.agenda small{color:var(--dim);font-weight:400;margin-right:10px;font-size:.6em}
+.prog{font-size:clamp(18px,2vw,30px);color:var(--gold);white-space:nowrap}
+.mid{flex:1;display:grid;grid-template-columns:1.25fr 1fr;gap:2vw;align-items:center;min-height:0}
+.chairbox{display:flex;align-items:center;gap:2vw;min-width:0}
+.chair{width:clamp(120px,15vw,210px);flex:none;text-align:center}
+.chair svg{width:100%;height:auto;display:block}
+.plate{display:inline-block;margin-top:4px;padding:2px 14px;border:2px solid var(--gold);border-radius:6px;color:var(--gold);font-size:clamp(14px,1.4vw,20px);letter-spacing:.3em}
+.bubble{position:relative;background:var(--ink);color:#1d140c;border-radius:24px;padding:3vh 2vw;font-size:clamp(30px,4.6vw,68px);font-weight:900;line-height:1.25;min-height:2.6em;display:flex;align-items:center;word-break:break-word;min-width:0;flex:1}
+.bubble::before{content:"";position:absolute;left:-22px;top:50%;margin-top:-16px;border:16px solid transparent;border-right:22px solid var(--ink);border-left:0}
+.bubble .lab{display:block;font-size:.36em;color:#8a6a3a;font-weight:700;margin-bottom:6px}
+.gauge{text-align:center}
+.gauge svg{width:100%;max-width:520px;height:auto}
+.dbnum{font-size:clamp(40px,6vw,92px);font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+.dbnum span{font-size:.35em;color:var(--dim);margin-left:6px}
+.peaknum{font-size:clamp(16px,1.6vw,24px);color:var(--red)}
+canvas#wave{width:100%;height:clamp(90px,17vh,170px);display:block;background:#0e0b08;border-radius:14px;border:1px solid #3a2e22}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.status{font-size:clamp(22px,3vw,44px);font-weight:800}
+.status.go{color:var(--gold2);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.04)}}
+.badge{font-size:14px;color:var(--dim);border:1px solid #4a3b2c;border-radius:999px;padding:4px 12px}
+#clapBtn{display:none;font-size:clamp(20px,2.4vw,32px);padding:10px 34px;border-radius:999px;border:none;background:var(--red);color:#fff;font-weight:800;box-shadow:0 5px 0 #7a1f18;user-select:none;touch-action:none}
+#clapBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #7a1f18}
+.clapmode #clapBtn{display:inline-block}
+.link{background:none;border:none;color:var(--dim);text-decoration:underline;font-size:13px}
+/* verdict */
+#verdict{align-items:center;justify-content:center;gap:2vh;text-align:center}
+#verdict .chair{width:clamp(110px,13vw,180px)}
+.vhead{font-size:clamp(20px,2.4vw,34px);color:var(--gold);letter-spacing:.2em}
+.vtext{font-size:clamp(28px,3.8vw,56px);font-weight:900;line-height:1.45;max-width:1100px;min-height:3em}
+.vtext q,.mtext q{quotes:"『" "』";color:var(--gold2)}
+.vnote{font-size:clamp(18px,2vw,28px);color:var(--dim);max-width:1000px;min-height:1.5em}
+.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(3px,-1px)}}
+/* minutes */
+#minutes{align-items:center;justify-content:center}
+.paper{width:min(1050px,100%);background:#f5ecda;color:#2a1f14;border-radius:6px;padding:28px 40px;box-shadow:0 20px 60px rgba(0,0,0,.6);font-family:"Hiragino Mincho ProN","Yu Mincho",serif}
+.paper h2{margin:0 0 4px;font-size:clamp(24px,3vw,40px);letter-spacing:.2em;border-bottom:3px double #2a1f14;padding-bottom:8px}
+.meta{font-size:15px;color:#6a5a44;margin-bottom:12px}
+.mag{font-size:clamp(20px,2.4vw,32px);font-weight:700;margin:6px 0 12px}
+table{width:100%;border-collapse:collapse;font-size:clamp(16px,1.9vw,26px)}
+td,th{padding:6px 8px;border-bottom:1px solid #cdbb9c;text-align:left;vertical-align:middle}
+th{font-size:.7em;color:#6a5a44}
+.bar{height:16px;background:#d9c7a4;border-radius:8px;overflow:hidden;min-width:120px}
+.bar i{display:block;height:100%;background:#b8411f}
+.mtext{font-size:clamp(18px,2.2vw,30px);font-weight:700;line-height:1.5;margin-top:14px;padding:12px 16px;border-left:6px solid #b8411f;background:#efe2c8}
+.mtext q{color:#8a2f12}
+.seal{float:right;margin-top:-6px;width:84px;height:84px;border:4px solid #c2321f;border-radius:50%;color:#c2321f;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;transform:rotate(-12deg)}
+.paper .row{justify-content:center;margin-top:18px}
+.paper .ghostbtn{color:#2a1f14;border-color:#8a7a5f}
+.listen{width:min(900px,100%);display:flex;align-items:center;gap:16px;background:#100c09;border:1px solid #3a2e22;border-radius:16px;padding:10px 16px;margin-bottom:6px}
+.listen .chair{width:76px}
+.listen .plate{font-size:11px;letter-spacing:.2em;padding:0 6px}
+.lmid{flex:1;min-width:0}
+.mutter{font-size:clamp(18px,2.2vw,30px);font-weight:800;min-height:1.4em}
+.mini{height:14px;background:#2a2119;border-radius:7px;overflow:hidden;margin-top:6px}
+.mini i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5fc27a,#e8b04b 60%,#e0483e)}
+.hint{font-size:13px;color:var(--dim);margin-top:4px}
+#crack{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9}
+#crack path{fill:none;stroke:#fff;stroke-width:3;stroke-linejoin:bevel;filter:drop-shadow(0 0 3px #000);transition:opacity 5s}
+.screen.shake{animation:shake .35s}
+@media (max-width:760px){
+ .opts{grid-template-columns:1fr}
+ .mid{grid-template-columns:1fr}
+ .chairbox{flex-direction:column}
+ .bubble::before{display:none}
+ #stage{height:auto}
+ .paper{padding:18px}
+}
+</style>
+</head>
+<body>
+
+<section id="setup" class="screen on">
+ <h1>どよめき議長</h1>
+ <p class="sub">会場の拍手と歓声の大きさで採決します。裁定は AI 議長がくだします。</p>
+ <div class="listen">
+  <div class="chair"><svg viewBox="0 0 200 200" class="face"></svg><div class="plate">議長</div></div>
+  <div class="lmid">
+   <div class="mutter" id="mutter">……議長は、もう聞いています。</div>
+   <div class="mini"><i id="miniBar"></i></div>
+   <div class="hint" id="lhint">画面のどこかをクリックで開廷（全画面）。マイクが無ければスペースキーかボタンで手拍子</div>
+  </div>
+  <button class="ghostbtn" id="setupClap">手拍子 👏</button>
+ </div>
+ <div class="form">
+  <label>議題</label>
+  <input type="text" id="agendaIn" value="中間発表のあとの夜、何をする？">
+  <label>案（2〜4 個。空欄はとばします）</label>
+  <div class="opts">
+   <input type="text" class="optIn" value="カツオのタタキを食べに行く">
+   <input type="text" class="optIn" value="もう 1 個プロトを作る">
+   <input type="text" class="optIn" value="温泉に行く">
+   <input type="text" class="optIn" value="全員で寝る">
+  </div>
+  <div class="row">
+   <button class="big" id="startBtn">採決</button>
+   <label class="chk"><input type="checkbox" id="voiceChk" checked>議長の声（読み上げ）</label>
+   <label class="chk"><input type="checkbox" id="clapChk">はじめから手拍子モード</label>
+  </div>
+ </div>
+</section>
+
+<section id="stage" class="screen">
+ <div class="top">
+  <div class="agenda"><small>議題</small><span id="agendaOut"></span></div>
+  <div class="prog" id="prog"></div>
+ </div>
+ <div class="mid">
+  <div class="chairbox">
+   <div class="chair"><svg viewBox="0 0 200 200" class="face"></svg><div class="plate">議長</div></div>
+   <div class="bubble" id="bubble"></div>
+  </div>
+  <div class="gauge">
+   <svg viewBox="0 0 400 230" id="gaugeSvg"></svg>
+   <div class="dbnum" id="dbnum">--<span>dB</span></div>
+   <div class="peaknum" id="peaknum">&nbsp;</div>
+  </div>
+ </div>
+ <canvas id="wave"></canvas>
+ <div class="foot">
+  <div class="status" id="status">準備中…</div>
+  <div class="row" style="margin:0">
+   <button id="clapBtn">手拍子 👏</button>
+   <span class="badge" id="badge">入力: 確認中</span>
+   <button class="link" id="toClap">手拍子モードに切り替え</button>
+  </div>
+ </div>
+</section>
+
+<section id="verdict" class="screen">
+ <div class="chair"><svg viewBox="0 0 200 200" class="face"></svg><div class="plate">議長</div></div>
+ <div class="vhead" id="vhead">議長裁定</div>
+ <div class="vtext" id="vtext"></div>
+ <div class="vnote" id="vnote"></div>
+ <div class="row"><button class="ghostbtn" id="toMinutes" style="visibility:hidden">議事録を見る</button></div>
+</section>
+
+<section id="minutes" class="screen">
+ <div class="paper">
+  <div class="seal">議決</div>
+  <h2>どよめき採決 議事録</h2>
+  <div class="meta" id="mmeta"></div>
+  <div class="mag" id="magenda"></div>
+  <table><thead><tr><th>案</th><th>ピーク</th><th>拍手の形</th><th style="width:28%">どよめき</th></tr></thead><tbody id="mrows"></tbody></table>
+  <div class="mtext" id="mtext"></div>
+  <div class="row">
+   <button class="big" id="againBtn">もう一度（別の裁定）</button>
+   <button class="ghostbtn" id="revoteBtn">採決をやり直す</button>
+   <button class="ghostbtn" id="resetBtn">議題を変える</button>
+  </div>
+ </div>
+</section>
+
+<svg id="crack" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+<script>
+const SPEED = /fast/.test(location.search) ? 0.12 : 1;
+const $ = s => document.querySelector(s);
+const wait = ms => new Promise(r => setTimeout(r, ms * SPEED));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const q = s => `<q>${esc(s)}</q>`;
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function show(id){ document.querySelectorAll('.screen').forEach(e => e.classList.toggle('on', e.id === id)); }
+
+/* ---------- 議長の顔 ---------- */
+document.querySelectorAll('svg.face').forEach(svg => {
+  svg.innerHTML = `<defs><radialGradient id="fg" cx="40%" cy="35%"><stop offset="0" stop-color="#ffe7a8"/><stop offset="1" stop-color="#c98a2a"/></radialGradient></defs>
+  <circle cx="100" cy="100" r="92" fill="url(#fg)" stroke="#6b4512" stroke-width="4"/>
+  <circle cx="100" cy="100" r="78" fill="none" stroke="#fff3" stroke-width="2" stroke-dasharray="4 7"/>
+  <g class="eyes"><ellipse cx="70" cy="88" rx="11" ry="14" fill="#1d140c"/><ellipse cx="130" cy="88" rx="11" ry="14" fill="#1d140c"/>
+  <circle cx="74" cy="83" r="3.5" fill="#fff"/><circle cx="134" cy="83" r="3.5" fill="#fff"/></g>
+  <path d="M52 64 L86 70 M148 64 L114 70" stroke="#1d140c" stroke-width="6" stroke-linecap="round" class="brows"/>
+  <ellipse class="mouth" cx="100" cy="138" rx="24" ry="5" fill="#5a1d12"/>`;
+});
+function face(level, talking){
+  document.querySelectorAll('svg.face').forEach(svg => {
+    const s = 1 + level * 0.9;
+    svg.querySelectorAll('.eyes ellipse').forEach(e => e.setAttribute('ry', 14 * s));
+    const m = svg.querySelector('.mouth');
+    const open = talking ? 5 + Math.abs(Math.sin(performance.now() / 70)) * 14 : 4 + level * 26;
+    m.setAttribute('ry', open);
+    svg.querySelector('.brows').setAttribute('transform', `translate(0 ${-level * 12})`);
+  });
+}
+
+/* ---------- メーター ---------- */
+const G = $('#gaugeSvg');
+(function buildGauge(){
+  const cx = 200, cy = 210, R = 170;
+  const pt = (a, r) => [cx + Math.cos(a) * r, cy - Math.sin(a) * r];
+  let h = '';
+  const segs = [[0, .55, '#5fc27a'], [.55, .8, '#e8b04b'], [.8, 1, '#e0483e']];
+  segs.forEach(([a, b, c]) => {
+    const [x1, y1] = pt(Math.PI * (1 - a), R), [x2, y2] = pt(Math.PI * (1 - b), R);
+    h += `<path d="M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}" stroke="${c}" stroke-width="26" fill="none"/>`;
+  });
+  for (let i = 0; i <= 6; i++) {
+    const a = Math.PI * (1 - i / 6), [x1, y1] = pt(a, R - 20), [x2, y2] = pt(a, R - 36), [tx, ty] = pt(a, R - 54);
+    h += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#f7efe2" stroke-width="4"/><text x="${tx}" y="${ty + 6}" fill="#a8977f" font-size="18" text-anchor="middle">${40 + i * 10}</text>`;
+  }
+  h += `<text x="200" y="150" fill="#a8977f" font-size="22" text-anchor="middle" letter-spacing="6">どよめき</text>`;
+  h += `<polygon id="peakMark" points="200,24 192,8 208,8" fill="#e0483e" transform="rotate(-90 200 210)"/>`;
+  h += `<g id="needle" transform="rotate(-90 200 210)"><line x1="200" y1="210" x2="200" y2="52" stroke="#f7efe2" stroke-width="7" stroke-linecap="round"/><circle cx="200" cy="210" r="16" fill="#e8b04b"/></g>`;
+  G.innerHTML = h;
+})();
+const toDb = l => 40 + l * 60;
+function drawGauge(level, peak){
+  $('#needle').setAttribute('transform', `rotate(${-90 + level * 180} 200 210)`);
+  $('#peakMark').setAttribute('transform', `rotate(${-90 + peak * 180} 200 210)`);
+  $('#dbnum').innerHTML = `${toDb(level).toFixed(1)}<span>dB</span>`;
+}
+
+/* ---------- 音（合成） ---------- */
+let ac = null;
+function audio(){ if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); return ac; }
+function tone(f, t0, dur, vol = .25, type = 'sine'){
+  const a = audio(), o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.value = f; o.connect(g); g.connect(a.destination);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + .01); g.gain.exponentialRampToValueAtTime(.0005, t0 + dur);
+  o.start(t0); o.stop(t0 + dur + .05);
+}
+function noise(t0, dur, vol, freq, typeF = 'bandpass'){
+  const a = audio(), n = a.createBufferSource(), b = a.createBuffer(1, a.sampleRate * dur, a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  n.buffer = b; const f = a.createBiquadFilter(); f.type = typeF; f.frequency.value = freq; const g = a.createGain(); g.gain.value = vol;
+  n.connect(f); f.connect(g); g.connect(a.destination); n.start(t0);
+}
+function chime(){ const t = audio().currentTime; [523, 659, 784, 1047].forEach((f, i) => { tone(f, t + i * .2, 1.1, .2); tone(f * 2, t + i * .2, .5, .05); }); }
+function gavel(times = 1){
+  const t = audio().currentTime;
+  for (let i = 0; i < times; i++) { const s = t + i * .32; noise(s, .09, 1.2, 1400); tone(170, s, .22, .5, 'triangle'); tone(95, s, .3, .35); }
+}
+function tick(){ const t = audio().currentTime; tone(1320, t, .08, .08, 'square'); }
+function clapSnd(){ const t = audio().currentTime; noise(t, .06, .7, 2200, 'highpass'); }
+
+function applause(sec){
+  const t = audio().currentTime; chairClapUntil = performance.now() + sec * 1000;
+  for (let i = 0; i < sec * 22; i++) noise(t + Math.random() * sec, .05, .25 + Math.random() * .45, 1400 + Math.random() * 1800);
+}
+
+/* ---------- 開いた瞬間から聞いている（第四の壁） ---------- */
+const LOUD = ['静粛に！ 今、そこで誰か笑いましたね', '静粛に！ 議長には聞こえています', '今のざわめき、議事録に残しますよ', '静粛に！ 後ろの席、聞こえていますよ'];
+const QUIET = ['……静かすぎます。誰もいないのですか', '……あの、誰か、いますよね？', '……この沈黙、議長は少し不安です'];
+let base = .15, lastLoud = -1e9, quietSince = performance.now(), lastMutter = 0;
+function mutter(t, speak){ $('#mutter').textContent = t; lastMutter = performance.now(); if (speak) say(t); }
+function preListen(l){
+  const now = performance.now();
+  $('#miniBar').style.width = (l * 100).toFixed(0) + '%';
+  base = base * .995 + l * .005;
+  if (l > Math.max(.45, base + .25) && now - lastLoud > 4000 * SPEED) {
+    lastLoud = now; quietSince = now;
+    gavel(2); crack(); const sc = $('#setup'); sc.classList.remove('shake'); void sc.offsetWidth; sc.classList.add('shake');
+    mutter(pick(LOUD), true);
+  }
+  if (l > .22) quietSince = now;
+  if (now - quietSince > 6000 * SPEED && now - lastMutter > 7000 * SPEED) { quietSince = now; mutter(pick(QUIET), true); }
+}
+function crack(){
+  const svg = $('#crack'); let x = 150 + Math.random() * 700, y = 150 + Math.random() * 700;
+  let h = '';
+  for (let k = 0; k < 6; k++) {
+    let a = Math.random() * Math.PI * 2, px = x, py = y, d = `M${px} ${py}`;
+    for (let j = 0; j < 5; j++) { a += (Math.random() - .5) * .9; const L = 30 + Math.random() * 70; px += Math.cos(a) * L; py += Math.sin(a) * L; d += ` L${px.toFixed(0)} ${py.toFixed(0)}`; }
+    h += `<path d="${d}"/>`;
+  }
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = h; svg.appendChild(g);
+  while (svg.children.length > 3) svg.firstChild.remove();
+  setTimeout(() => g.querySelectorAll('path').forEach(p => p.style.opacity = 0), 1500);
+  setTimeout(() => g.remove(), 7000);
+}
+let opened = false;
+function firstGesture(e){
+  if (opened) return; opened = true;
+  audio();
+  const el = document.documentElement;
+  try { const r = el.requestFullscreen && el.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } catch (_) {}
+  gavel(1);
+  $('#lhint').textContent = mode === 'mic' ? 'マイクで会場のざわめきを聞いています' : 'スペースキー / 手拍子ボタンで会場の音の代わり';
+  if (!(e.target && e.target.id === 'startBtn')) mutter('この会場の画面は、議長が預かります', true);
+}
+document.addEventListener('pointerdown', firstGesture, true);
+document.addEventListener('keydown', firstGesture, true);
+
+/* ---------- 入力（マイク / 手拍子） ---------- */
+let chairClapUntil = 0;
+let mode = 'none', analyser = null, abuf = null;
+let level = 0, energy = 0, amb = .08, holding = false, presses = 0, ghost = null, measureT0 = 0;
+function setClap(why){
+  mode = 'clap'; document.body.classList.add('clapmode');
+  $('#badge').textContent = `手拍子モード（${why}）: スペースキー / ボタンを連打・長押し`;
+  $('#toClap').style.display = 'none';
+  const lh = $('#lhint'); if (lh) lh.textContent = 'マイクなし: スペースキー / 手拍子ボタンの連打が会場の音の代わり';
+}
+let inputP = null;
+function initInput(){
+  if ($('#clapChk').checked && mode !== 'clap') return setClap('手動');
+  if (!inputP) inputP = initInput2();
+  return inputP;
+}
+async function initInput2(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return setClap('マイク非対応');
+  try {
+    const stream = await Promise.race([
+      navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false, autoGainControl: false}}),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))]);
+    const a = audio(); analyser = a.createAnalyser(); analyser.fftSize = 2048; abuf = new Float32Array(analyser.fftSize);
+    a.createMediaStreamSource(stream).connect(analyser);
+    mode = 'mic'; $('#badge').textContent = 'マイク計測中'; $('#toClap').style.display = '';
+  } catch (e) { setClap('マイクが使えません'); }
+}
+function press(){ energy = Math.min(1.25, energy + .15); presses++; ghost = null; clapSnd(); }
+document.addEventListener('keydown', e => {
+  const inField = /INPUT|TEXTAREA/.test(e.target.tagName) && e.target.type === 'text';
+  if (e.code === 'Space' && !inField && ($('#stage').classList.contains('on') || $('#setup').classList.contains('on'))) { e.preventDefault(); if (!e.repeat) press(); holding = true; }
+});
+document.addEventListener('keyup', e => { if (e.code === 'Space') holding = false; });
+const cb = $('#clapBtn');
+cb.addEventListener('pointerdown', e => { e.preventDefault(); press(); holding = true; });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cb.addEventListener(ev, () => holding = false));
+$('#toClap').onclick = () => setClap('手動');
+$('#setupClap').addEventListener('pointerdown', e => { e.preventDefault(); if (mode !== 'clap') setClap('手動'); press(); });
+
+function readLevel(){
+  let raw;
+  if (mode === 'mic' && analyser) {
+    analyser.getFloatTimeDomainData(abuf);
+    let s = 0; for (let i = 0; i < abuf.length; i++) s += abuf[i] * abuf[i];
+    energy *= .945;
+    raw = Math.max(clamp((20 * Math.log10(Math.sqrt(s / abuf.length) + 1e-8) + 58) / 52), energy);
+  } else {
+    energy *= .945; if (holding) energy = Math.min(1.25, energy + .03);
+    amb = clamp(amb + (Math.random() - .5) * .02, .03, .16);
+    let g = 0;
+    if (ghost && measuring) { // 入力がない時の架空の観客
+      const t = (performance.now() - measureT0) / 1000 / SPEED;
+      const x = (t - ghost.at) / ghost.len;
+      g = x < 0 ? 0 : x < .15 ? ghost.amp * x / .15 : x < 1 ? ghost.amp * (1 - .35 * (x - .15)) * (.85 + Math.random() * .15) : ghost.amp * Math.exp(-(x - 1) * 6);
+    }
+    raw = clamp(energy + amb + g);
+  }
+  if (performance.now() < chairClapUntil) raw = Math.max(raw, .5 + Math.random() * .15);
+  level = raw > level ? level * .4 + raw * .6 : level * .9 + raw * .1;
+  return level;
+}
+
+/* ---------- 波形 ---------- */
+const cv = $('#wave'), cx2 = cv.getContext('2d');
+let hist = [];
+function drawWave(){
+  const w = cv.width = cv.clientWidth * devicePixelRatio, h = cv.height = cv.clientHeight * devicePixelRatio;
+  cx2.clearRect(0, 0, w, h);
+  if (hist.length > 1) { // この案の拍手の形
+    cx2.fillStyle = 'rgba(232,176,75,.22)'; cx2.beginPath(); cx2.moveTo(0, h);
+    hist.forEach((v, i) => cx2.lineTo(i / 300 * w, h - v * h * .95)); cx2.lineTo((hist.length - 1) / 300 * w, h); cx2.fill();
+  }
+  cx2.strokeStyle = level > .8 ? '#e0483e' : '#f6d58a'; cx2.lineWidth = 4 * devicePixelRatio; cx2.beginPath();
+  const N = 256, t = performance.now() / 1000;
+  for (let i = 0; i < N; i++) {
+    let v;
+    if (mode === 'mic' && abuf) v = abuf[Math.floor(i * abuf.length / N)] * 4;
+    else v = level * (Math.sin(i * .21 + t * 9) * .6 + Math.sin(i * .57 - t * 13) * .3 + (Math.random() - .5) * .5);
+    const y = h / 2 - clamp(v, -1, 1) * h * .45, x = i / (N - 1) * w;
+    i ? cx2.lineTo(x, y) : cx2.moveTo(x, y);
+  }
+  cx2.stroke();
+}
+
+/* ---------- ループ ---------- */
+let measuring = false, curSamples = null, curPeak = 0, talking = false;
+function loop(){
+  const l = readLevel();
+  if (measuring) { curSamples.push(l); curPeak = Math.max(curPeak, l); hist.push(l); if (hist.length > 300) hist.shift(); }
+  if ($('#stage').classList.contains('on')) { drawGauge(l, curPeak); drawWave(); }
+  const live = $('#stage').classList.contains('on') || $('#setup').classList.contains('on');
+  face(live ? l : 0, talking);
+  if ($('#setup').classList.contains('on')) preListen(l);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function say(text){
+  talking = true; setTimeout(() => talking = false, Math.min(2600, 120 * text.length) * SPEED);
+  if (!$('#voiceChk').checked || !window.speechSynthesis) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; u.rate = 1.05; speechSynthesis.speak(u); } catch (e) {}
+}
+
+/* ---------- 採決 ---------- */
+let agenda = '', options = [], results = [], round = 0, lastTpl = '';
+async function runVote(){
+  agenda = $('#agendaIn').value.trim() || '議題なし';
+  options = [...document.querySelectorAll('.optIn')].map(i => i.value.trim()).filter(Boolean).slice(0, 4);
+  if (options.length < 2) { alert('案を 2 つ以上入れてください'); return; }
+  audio(); show('stage'); $('#agendaOut').textContent = agenda; $('#status').className = 'status';
+  $('#status').textContent = '入力を確認中…'; $('#bubble').innerHTML = '';
+  await initInput();
+  round++; results = []; chime();
+  $('#bubble').innerHTML = '静粛に。これより採決を行います。';
+  say('静粛に。これより、どよめき採決を行います。'); await wait(2600);
+  for (let i = 0; i < options.length; i++) {
+    const text = options[i];
+    $('#prog').textContent = `案 ${i + 1} / ${options.length}`;
+    $('#bubble').innerHTML = `<span><span class="lab">案 ${i + 1}</span>${esc(text)}</span>`;
+    $('#peaknum').innerHTML = '&nbsp;'; $('#status').className = 'status'; $('#status').textContent = '議長が読み上げています';
+    hist = []; curPeak = 0; say(`案${i + 1}。${text}。`); await wait(2200);
+    curSamples = [];
+    ghost = (mode === 'clap' && presses === 0) ? {at: .3 + Math.random() * 1.5, len: Math.random() < .5 ? .4 + Math.random() * .5 : 1.8 + Math.random() * 2, amp: .3 + Math.random() * .65} : null;
+    if (ghost) $('#badge').textContent = '手拍子モード: 入力が無いので架空の観客が拍手中（スペースキーで参加）';
+    measureT0 = performance.now(); measuring = true; $('#status').className = 'status go';
+    for (let s = 5; s > 0; s--) { $('#status').textContent = `拍手・歓声をどうぞ！ 残り ${s}`; if (mode !== 'mic') tick(); await wait(1000); }
+    measuring = false;
+    let peak = curPeak, chairVote = false; const n = curSamples.length || 1;
+    if (peak < .35) { // 誰も拍手しない → 議長が自分で拍手
+      $('#status').className = 'status'; $('#status').textContent = '……誰も拍手しない。では議長が。';
+      $('#bubble').innerHTML = `<span><span class="lab">議長票</span>${esc(text)}に、議長が 1 票。</span>`;
+      applause(1.6); say('議長票です。'); await wait(1900);
+      peak = Math.min(1, peak + .18); chairVote = true; curPeak = peak;
+    }
+    const above = curSamples.filter(v => v > peak * .6).length / n;
+    const sec = +(above * 5).toFixed(1);
+    const shape = above < .22 ? 'sharp' : above > .45 ? 'long' : 'wave';
+    results.push({text, i, peak, db: +toDb(peak).toFixed(1), shape, sec, chairVote});
+    $('#status').className = 'status'; $('#status').textContent = '計測おわり';
+    $('#peaknum').textContent = `ピーク ${toDb(peak).toFixed(1)} dB（${SHAPE[shape]}）${chairVote ? '＋議長票' : ''}`;
+    gavel(1); await wait(1300);
+  }
+  $('#status').textContent = '議長が審議中…'; $('#bubble').innerHTML = '…審議中…'; say('審議します。');
+  await wait(1800);
+  doVerdict();
+}
+const SHAPE = {sharp: '短く鋭い', long: '長く続く', wave: '寄せては返す'};
+
+/* ---------- 言葉の切り貼り ---------- */
+const PART = 'をにでへとがはもの、，。　';
+function cuts(s){ const c = []; for (let i = 1; i < s.length - 1; i++) if (PART.includes(s[i])) c.push(i + 1); return c; }
+function mid(s){ // 真ん中に近い助詞で切る
+  const c = cuts(s); let k;
+  if (c.length) k = c.reduce((a, b) => Math.abs(b - s.length / 2) < Math.abs(a - s.length / 2) ? b : a);
+  else k = Math.max(1, Math.ceil(s.length / 2));
+  return [s.slice(0, k).trim(), s.slice(k).trim() || s];
+}
+function last(s){ // 最後の助詞までと、その後ろ
+  const c = cuts(s); if (!c.length) return mid(s);
+  const k = c[c.length - 1]; return [s.slice(0, k).trim(), s.slice(k).trim() || s];
+}
+
+/* ---------- 裁定テンプレート（13 種） ---------- */
+const TPL = [
+  {id: 'splice', ok: c => true, f: c => `${q(last(c.a.text)[0])}${q(c.b.text)}。つまり、この二つをいっぺんにやることに決しました。`},
+  {id: 'swap', ok: c => true, f: c => `${q(mid(c.b.text)[0])}${q(mid(c.a.text)[1])}。1 位と 2 位の言葉を入れ替えたものを、本日の結論とします。`},
+  {id: 'close', ok: c => c.diff < 2.5, f: c => `拍手の差 ${c.diff.toFixed(1)} デシベル。議長はこれを民意の迷いと受け取りました。よって${q(mid(c.a.text)[0])}までは全員で、${q(mid(c.b.text)[1])}からは各自の判断とします。`},
+  {id: 'quiet', ok: c => c.r.length >= 3, f: c => `最も静かだった${q(c.z.text)}。議長は、拍手しなかった手の中に本音を見ました。${q(c.z.text)}に決します。`},
+  {id: 'mix', ok: c => c.r.length >= 3, f: c => c.r.slice(0, 3).map((x, i) => q(i < 2 ? mid(x.text)[0] : mid(x.text)[1])).join('') + `。すべての案の頭と尻尾を繋ぎ、全会一致とみなします。`},
+  {id: 'landslide', ok: c => c.diff > 8, f: c => `議論の余地なし。${c.diff.toFixed(1)} デシベル差の圧勝、${q(c.a.text)}。木槌を三回鳴らします。`},
+  {id: 'second', ok: c => true, f: c => `1 位の${q(c.a.text)}は熱すぎました。議長は二番目の温度、${q(c.b.text)}を採ります。${q(mid(c.a.text)[1])}は明日に繰り越し。`},
+  {id: 'agenda', ok: c => true, f: c => `議題${q(mid(agenda)[0])}……の答えは、${q(mid(c.a.text)[1])}だけで十分でした。${q(mid(c.b.text)[0])}は議事録にだけ残します。`},
+  {id: 'cond', ok: c => true, f: c => `${q(c.a.text)}に決します。ただし${q(mid(c.b.text)[1])}の気持ちを、各自ポケットに入れて行くこと。`},
+  {id: 'order', ok: c => c.r.length >= 3, f: c => `順番に行います。まず${q(c.a.text)}、次に${q(c.b.text)}、最後に${q(mid(c.z.text)[0])}……のあたりで力尽きることを許可します。`},
+  {id: 'silence', ok: c => c.a.peak < .3, f: c => `会場はほぼ無音でした。沈黙は全会一致と解釈し、議長の独断で${q(pick(c.r).text)}とします。`},
+  {id: 'reverse', ok: c => mid(c.a.text)[1] !== c.a.text, f: c => `${q(mid(c.a.text)[1])}${q(mid(c.a.text)[0])}。1 位の案を後ろから読みました。これが会場の深層の声です。`},
+  {id: 'chairvote', ok: c => c.r.some(x => x.chairVote), f: c => { const x = c.r.find(y => y.chairVote); return `${q(x.text)}には、議長が自ら拍手しました。自作自演ですが民意に含め、${q(mid(x.text)[0])}${q(mid(c.a.text)[1])}に決します。`; }},
+  {id: 'loud', ok: c => c.a.peak > .85, f: c => `メーターが振り切れました。${q(c.a.text)}。ただし声が大きすぎたので、${q(last(c.z.text)[1])}だけは静かにやること。`},
+];
+const OPEN = ['議長裁定。', '静粛に。結果を申し上げます。', '民意は測られました。', '木槌の前に、ひとこと。', '採決の結果、'];
+const ADD = {
+  sharp: [c => `${q(mid(c.a.text)[0])}への拍手は ${c.a.sec} 秒の鋭い一撃でした。勢いを尊重し、15 分で切り上げます。`, c => `一瞬の爆発でした。議長は衝動に議決権を与えます。`],
+  long: [c => `拍手が ${c.a.sec} 秒も途切れませんでした。持久戦の民意として、朝まで続けます。`, c => `長い拍手は、長い夜の予約とみなします。`],
+  wave: [c => `拍手は寄せては返す波でした。途中参加・途中離脱を認めます。`, c => `盛り上がりが二度来ました。二次会の存在を認めます。`],
+};
+let verdictHTML = '', noteHTML = '';
+function makeVerdict(){
+  const r = [...results].sort((x, y) => y.peak - x.peak);
+  const c = {r, a: r[0], b: r[1], z: r[r.length - 1], diff: r[0].db - r[1].db};
+  let pool = TPL.filter(t => t.ok(c) && t.id !== lastTpl);
+  if (c.diff < 2.5 && lastTpl !== 'close' && Math.random() < .5) pool = pool.filter(t => t.id === 'close');
+  const t = pick(pool); lastTpl = t.id;
+  verdictHTML = esc(pick(OPEN)) + t.f(c);
+  noteHTML = pick(ADD[c.a.shape])(c);
+}
+async function doVerdict(){
+  makeVerdict(); show('verdict'); $('#toMinutes').style.visibility = 'hidden';
+  const vt = $('#vtext'), vn = $('#vnote'); vt.innerHTML = ''; vn.innerHTML = '';
+  gavel(2); vt.classList.remove('shake'); void vt.offsetWidth; vt.classList.add('shake');
+  await wait(700);
+  const plain = verdictHTML.replace(/<q>/g, '『').replace(/<\/q>/g, '』').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  say(plain.replace(/[『』]/g, ''));
+  // 一文字ずつ出す（タグは崩さない）
+  const tokens = verdictHTML.match(/<\/?q>|&[a-z]+;|[\s\S]/g);
+  let out = '';
+  for (const tk of tokens) { out += tk; if (tk[0] !== '<') { vt.innerHTML = out + (out.split('<q>').length > out.split('</q>').length ? '</q>' : ''); await wait(45); } }
+  vt.innerHTML = verdictHTML;
+  await wait(500); vn.innerHTML = noteHTML; gavel(lastTpl === 'landslide' ? 3 : 1);
+  $('#toMinutes').style.visibility = 'visible';
+  await wait(3500);
+  if ($('#verdict').classList.contains('on')) showMinutes();
+}
+function showMinutes(){
+  show('minutes');
+  const now = new Date();
+  $('#mmeta').textContent = `第 ${round} 回 どよめき採決　${now.toLocaleString('ja-JP')}　計測: ${mode === 'mic' ? 'マイク' : '手拍子'}`;
+  $('#magenda').textContent = `議題: ${agenda}`;
+  const top = Math.max(...results.map(x => x.peak));
+  $('#mrows').innerHTML = results.map(x => `<tr${x.peak === top ? ' style="font-weight:700"' : ''}><td>${esc(x.text)}</td><td>${x.db.toFixed(1)} dB${x.chairVote ? '<br><small>議長票</small>' : ''}</td><td>${SHAPE[x.shape]}（${x.sec} 秒）</td><td><div class="bar"><i style="width:${(x.peak * 100).toFixed(0)}%"></i></div></td></tr>`).join('');
+  $('#mtext').innerHTML = `裁定: ${verdictHTML}<br><span style="font-size:.8em;font-weight:400">${noteHTML}</span>`;
+}
+
+initInput();
+$('#startBtn').onclick = runVote;
+$('#toMinutes').onclick = showMinutes;
+$('#againBtn').onclick = doVerdict;
+$('#revoteBtn').onclick = runVote;
+$('#resetBtn').onclick = () => { show('setup'); };
+</script>
+</body>
+</html>

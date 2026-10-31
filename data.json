@@ -48,5 +48,55 @@
   "path": "protos/round-01/p5-nippou-manga",
   "shot": true,
   "issue_url": "https://github.com/tamkai/kochi-proto100/issues/5"
+ },
+ {
+  "round": 2,
+  "id": "p1",
+  "title": "べく杯ルーレット",
+  "oneliner": "飲み会の机の真ん中に置いた 1 台のコマを回し、止まった席に杯とお題が出る。開くとコマが勝手に回り、画面の前の「あなた」を指す",
+  "best": false,
+  "path": "protos/round-02/p1-bekuhai-spin",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/6"
+ },
+ {
+  "round": 2,
+  "id": "p2",
+  "title": "代理口げんか",
+  "oneliner": "1 台の左右に座った 2 人の主張を、赤と青の AI 代理人が格ゲー風に言い合う。開くと 2 体が、画面の前の人のカーソルと今の時刻をネタにけんかを始める",
+  "best": true,
+  "path": "protos/round-02/p2-proxy-quarrel",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/7"
+ },
+ {
+  "round": 2,
+  "id": "p3",
+  "title": "畑のあぜで、赤い目と乾杯",
+  "oneliner": "山あいの畑で、赤い目の AI と乾杯する。今日の畑の一言が、30 年の年表に札として吊るされる。赤いレンズに見ている本人が映り込む",
+  "best": false,
+  "path": "protos/round-02/p3-field-toast",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/8"
+ },
+ {
+  "round": 2,
+  "id": "p4",
+  "title": "面付け係の 1 枚折り豆本",
+  "oneliner": "今日の文を AI 面付け係が A4 1 枚・8 面に割り付け、刷って折ると豆本になる。開くとページ自体が面付けされ、勝手に折れて豆本になる",
+  "best": false,
+  "path": "protos/round-02/p4-zine-imposer",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/9"
+ },
+ {
+  "round": 2,
+  "id": "p5",
+  "title": "どよめき議長",
+  "oneliner": "会場全員の拍手の大きさをマイクで測って採決し、AI 議長が案の言葉を切り貼りして裁定する。押す前から部屋の音を聞いていて、うるさいと木槌が鳴る",
+  "best": false,
+  "path": "protos/round-02/p5-applause-chair",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/10"
  }
 ]
