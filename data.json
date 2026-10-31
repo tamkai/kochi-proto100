@@ -98,5 +98,55 @@
   "path": "protos/round-02/p5-applause-chair",
   "shot": true,
   "issue_url": "https://github.com/tamkai/kochi-proto100/issues/10"
+ },
+ {
+  "round": 3,
+  "id": "p1",
+  "title": "誰も読まない利用規約",
+  "oneliner": "普通の利用規約が、開いた時刻・スクロールの速さ・窓の大きさを条文の文体で書き込み、読み飛ばしを実測値で突きつけてくる",
+  "best": false,
+  "path": "protos/round-03/p1-unread-terms",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/11"
+ },
+ {
+  "round": 3,
+  "id": "p2",
+  "title": "だるまさんが検品した",
+  "oneliner": "検品カメラ AI とだるまさんがころんだ。振り向いた瞬間に動いた所へ NG 枠を付けた「検査票」で止められる（カメラ無しでも遊べる）",
+  "best": true,
+  "path": "protos/round-03/p2-daruma-inspect",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/12"
+ },
+ {
+  "round": 3,
+  "id": "p3",
+  "title": "窓から窓へ回覧板",
+  "oneliner": "開いた窓 1 つ 1 つがご近所の家になり、回覧板が窓の端から隣の窓へ渡っていく。AI 住人のぼやきが回るほどとげを増す",
+  "best": false,
+  "path": "protos/round-03/p3-window-kairan",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/13"
+ },
+ {
+  "round": 3,
+  "id": "p4",
+  "title": "ためらいの再生",
+  "oneliner": "ありがとうの 3 行を書いて封をすると、書いた過程が再生され、消した言葉と止まった秒数が手紙に残る",
+  "best": false,
+  "path": "protos/round-03/p4-hesitation-replay",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/14"
+ },
+ {
+  "round": 3,
+  "id": "p5",
+  "title": "1 秒で 1000 枚の名刺",
+  "oneliner": "印刷所の AI が 1 秒で 1000 通りの名刺を刷り、明るさ順に並べ替わって名前の 1 文字目のモザイクになる",
+  "best": false,
+  "path": "protos/round-03/p5-thousand-cards",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/15"
  }
 ]

@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1 秒で 1000 枚の名刺</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#151311;color:#eee;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;overflow:hidden}
+#app{display:flex;height:100vh}
+#side{width:290px;flex:none;padding:20px 18px;display:flex;flex-direction:column;gap:10px;background:#0c0b0a;border-right:1px solid #2a2724}
+h1{font-size:21px;margin:0;letter-spacing:.04em}
+.sub{font-size:12px;color:#9a948c;line-height:1.6;margin:0}
+label{font-size:11px;color:#a7a097;margin-top:4px}
+input{width:100%;padding:8px 10px;background:#1e1c1a;border:1px solid #3d3934;color:#fff;font-size:16px;border-radius:5px;font-family:inherit}
+button{margin-top:6px;padding:12px;font-size:17px;font-weight:800;background:#e8452c;color:#fff;border:none;border-radius:7px;cursor:pointer;letter-spacing:.08em;font-family:inherit}
+button:hover{background:#ff5a3d}
+button:disabled{background:#5a2a22;color:#c99;cursor:default}
+#counter{font-size:36px;font-weight:900;font-variant-numeric:tabular-nums;margin-top:8px;line-height:1}
+#counter small{font-size:15px;font-weight:600;color:#aaa}
+#ms{font-size:13px;color:#f5c04a;font-variant-numeric:tabular-nums;line-height:1.6}
+#status{font-size:12px;color:#7fd1a8;min-height:1.4em}
+#log{flex:1;overflow:hidden;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#6fae86;line-height:1.55;white-space:pre;border-top:1px solid #2a2724;padding-top:8px;-webkit-mask-image:linear-gradient(#000 60%,transparent)}
+.note{font-size:10.5px;color:#6d675f}
+#stage{flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at center,#24211e,#100f0e 75%)}
+#cv{position:absolute;inset:0;width:100%;height:100%;transition:transform 1.4s cubic-bezier(.2,.7,.2,1);cursor:pointer}
+#caption{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:17px;letter-spacing:.06em;opacity:0;transition:opacity .8s;pointer-events:none;text-shadow:0 2px 8px #000}
+#caption b{color:#f5c04a;font-size:22px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:5}
+#modal.on{display:flex}
+#bigwrap{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:translateY(40px) rotate(-4deg) scale(.85);opacity:0}to{transform:none;opacity:1}}
+#big{width:91mm;height:55mm;display:block;box-shadow:0 30px 80px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.08)}
+#info{text-align:center;background:rgba(10,9,8,.85);padding:12px 22px;border-radius:10px;line-height:1.7}
+#info .no{font-size:24px;font-weight:900;letter-spacing:.1em}
+#info .prob{font-size:13px;color:#f5c04a}
+#info .rev{font-size:15px}
+#info .hint{font-size:11px;color:#888}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1>1 秒で 1000 枚の名刺</h1>
+    <p class="sub">印刷所の AI が、あなたの名刺を 1 秒で 1000 通りデザインします。</p>
+    <label for="nm">お名前</label>
+    <input id="nm" value="山田 はな" maxlength="12">
+    <label for="tt">肩書き</label>
+    <input id="tt" value="高知のパン屋 店主" maxlength="20">
+    <button id="go">1000 案 刷る</button>
+    <div id="counter">0 <small>/ 1000 案</small></div>
+    <div id="ms">経過 0 ms</div>
+    <div id="status"></div>
+    <div id="log"></div>
+    <div class="note">名刺をクリックで実寸表示 ／ 音はボタンを押すと鳴ります（自動の 1 回目は無音のことがあります）</div>
+  </div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="caption"></div>
+  </div>
+</div>
+<div id="modal">
+  <div id="bigwrap"><canvas id="big"></canvas></div>
+  <div id="info"><div class="no"></div><div class="prob">この案を選んだ確率 1/1000</div><div class="rev"></div><div class="hint">どこかをクリックで戻る</div></div>
+</div>
+<script>
+(() => {
+'use strict';
+const N = 1000, COLS = 25, ROWS = 40, UW = 91, UH = 55;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const atlas = document.createElement('canvas');
+atlas.width = COLS * UW; atlas.height = ROWS * UH;
+const actx = atlas.getContext('2d');
+const scratch = document.createElement('canvas');
+scratch.width = UW; scratch.height = UH;
+const sctx = scratch.getContext('2d', { willReadFrequently: true });
+
+// ---------- RNG ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function hashStr(s){let h=2166136261;for(const ch of s){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+
+// ---------- palettes ----------
+const PAL_LIGHT = [
+  ['#ffffff','#222222','#e8452c'],['#f6f1e7','#3a2e22','#b5562f'],['#fdfbf5','#1d3557','#e63946'],
+  ['#eef3f7','#1b2a3a','#2a66d9'],['#fff7d6','#2b2b2b','#f2a900'],['#f3efe9','#111111','#111111'],
+  ['#e9f4ee','#1f3b2c','#3fa37a'],['#fbeff2','#5a2236','#e07a96']
+];
+const PAL_MID = [['#e8452c','#ffffff','#ffd23f'],['#2a66d9','#ffffff','#ffd23f'],['#f2b705','#1a1a1a','#e8452c'],['#7fb7a4','#13261b','#ffffff'],['#c9b79c','#2b2118','#7a1f1f']];
+const PAL_DARK = [
+  ['#111111','#f5f5f5','#e8452c'],['#0d2a4a','#f6f1e7','#f2b705'],['#2a0f14','#f3d9a4','#c9a227'],
+  ['#13261b','#e9f4ee','#9bd4b4'],['#1f1f2e','#c7c7ff','#ff6b9a'],['#000000','#d4af37','#d4af37'],['#3b2a20','#f6efe2','#e8a23a']
+];
+const FONTS = {
+  min: '"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif',
+  got: '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif',
+  maru: '"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif'
+};
+const PATS = ['none','none','dots','dots','dots','stripe','grid','band','split','circleBig','circleBig'];
+const LOGOS = ['none','circle','square','tri','diamond','ring','dotmark','initial','initial'];
+const LAYOUTS = ['hL','hL','hC','hB','vR','vR'];
+const pick = (r, a) => a[Math.floor(r() * a.length)];
+
+function makeDesign(seed){
+  const r = mulberry32(seed);
+  const q = r();
+  const p = pick(r, q < .29 ? PAL_DARK : q < .41 ? PAL_MID : PAL_LIGHT);
+  const d = {
+    bg: p[0], ink: p[1], ac: p[2],
+    rad: r() < .5 ? 0 : r() * 7,
+    pat: pick(r, PATS), gap: 3 + r() * 7, dr: .5 + r() * 2, pa: .25 + r() * .65,
+    bw: 4 + r() * 10, bandTop: r() < .5, splitLeft: r() < .5,
+    cx: r(), cy: r(), cr: 10 + r() * 30,
+    frame: r() < .25 ? (r() < .5 ? 1 : 2) : 0,
+    logo: pick(r, LOGOS), ls: 5 + r() * 9,
+    lay: pick(r, LAYOUTS),
+    font: r() < .45 ? 'min' : (r() < .8 ? 'got' : 'maru'),
+    wt: r() < .5 ? 700 : (r() < .5 ? 400 : 900),
+    ns: 5 + Math.pow(r(), 1.6) * 12,
+    m: 5 + r() * 11,
+    nameAc: r() < .2,
+    rule: r() < .4
+  };
+  return d;
+}
+
+// ---------- review (fake AI) ----------
+const HEAD_POOL = ['名前が主役の案','控えめな案','攻めすぎた案','老舗の佇まい','スタートアップ風の案','昭和の喫茶店風','北欧の朝みたいな案','誠実さで押す案','遊び心が漏れている案','几帳面な案'];
+const TAIL_POOL = ['初対面で覚えられる','渡す手が少し震える','2 秒で忘れられない','上司が二度見する','商店街でいちばん目立つ','名刺入れの中で浮く','受け取った人が裏返す','雨の日に映える','10 年使える','交換のあと話が弾む'];
+function review(d, r){
+  let head;
+  if (d.m > 13) head = '余白で語る案';
+  else if (d.ns > 14) head = '圧の強い案';
+  else if (d.pat === 'dots' && d.pa > .6) head = '水玉が主張する案';
+  else if (d.lay === 'vR') head = '縦組みの品格';
+  else if (lumHex(d.bg) < .25) head = '夜の名刺';
+  else head = pick(r, HEAD_POOL);
+  return head + '。' + pick(r, TAIL_POOL);
+}
+function lumHex(h){const n=parseInt(h.slice(1),16);return(0.299*(n>>16)+0.587*(n>>8&255)+0.114*(n&255))/255;}
+
+// ---------- card drawing (unit space 91 x 55) ----------
+function rr(c,x,y,w,h,r){c.beginPath();if(r<=0){c.rect(x,y,w,h);return;}c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function setFont(c, d, size, wt){c.font = `${wt||d.wt} ${size}px ${FONTS[d.font]}`;}
+function fitSize(c, d, text, size, maxW, wt){setFont(c,d,size,wt);const w=c.measureText(text).width;if(w>maxW){size*=maxW/w;setFont(c,d,size,wt);}return size;}
+function drawLogo(c, d, x, y, s, initial){
+  c.fillStyle = d.ac; c.strokeStyle = d.ac;
+  switch(d.logo){
+    case 'circle': c.beginPath(); c.arc(x+s/2,y+s/2,s/2,0,7); c.fill(); break;
+    case 'square': c.fillRect(x,y,s,s); break;
+    case 'tri': c.beginPath(); c.moveTo(x+s/2,y); c.lineTo(x+s,y+s); c.lineTo(x,y+s); c.fill(); break;
+    case 'diamond': c.beginPath(); c.moveTo(x+s/2,y); c.lineTo(x+s,y+s/2); c.lineTo(x+s/2,y+s); c.lineTo(x,y+s/2); c.fill(); break;
+    case 'ring': c.lineWidth = s*.18; c.beginPath(); c.arc(x+s/2,y+s/2,s*.4,0,7); c.stroke(); break;
+    case 'dotmark': for(let k=0;k<3;k++){c.beginPath();c.arc(x+s*(.2+.3*k),y+s*(.75-.25*k),s*.14,0,7);c.fill();} break;
+    case 'initial':
+      c.fillRect(x,y,s,s); c.fillStyle = d.bg; c.textAlign='center'; c.textBaseline='middle';
+      setFont(c,d,s*.7,900); c.fillText(initial,x+s/2,y+s*.54); break;
+  }
+}
+function drawCard(c, d, name, title){
+  const W = UW, H = UH, m = d.m, initial = Array.from(name.replace(/\s/g,''))[0] || '名';
+  c.save();
+  rr(c,0,0,W,H,d.rad); c.clip();
+  c.fillStyle = d.bg; c.fillRect(0,0,W,H);
+  c.fillStyle = d.ac; c.strokeStyle = d.ac;
+  switch(d.pat){
+    case 'dots': c.globalAlpha = d.pa;
+      for(let y=d.gap/2,row=0;y<H+d.gap;y+=d.gap,row++) for(let x=(row%2?d.gap/2:0);x<W+d.gap;x+=d.gap){c.beginPath();c.arc(x,y,Math.min(d.dr,d.gap*.4),0,7);c.fill();}
+      break;
+    case 'stripe': c.globalAlpha = d.pa*.5; c.lineWidth = Math.min(d.dr, d.gap*.45);
+      for(let x=-H;x<W;x+=d.gap){c.beginPath();c.moveTo(x,H);c.lineTo(x+H,0);c.stroke();}
+      break;
+    case 'grid': c.globalAlpha = .35; c.lineWidth = .25;
+      for(let x=0;x<W;x+=d.gap){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}
+      for(let y=0;y<H;y+=d.gap){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
+      break;
+    case 'band': c.globalAlpha = .9; c.fillRect(0, d.bandTop ? 0 : H-d.bw, W, d.bw); break;
+    case 'split': c.globalAlpha = .9; c.fillRect(d.splitLeft ? 0 : W*.7, 0, W*.3, H); break;
+    case 'circleBig': c.globalAlpha = .85; c.beginPath(); c.arc(d.cx*W, d.cy*H, d.cr, 0, 7); c.fill(); break;
+  }
+  c.globalAlpha = 1;
+  if (d.frame){ c.strokeStyle = d.ink; c.lineWidth = d.frame===2 ? .3 : .5; c.strokeRect(3,3,W-6,H-6); if(d.frame===2) c.strokeRect(4.3,4.3,W-8.6,H-8.6); }
+  const tsz = 2.6 + (d.ns/17)*1.2, csz = 1.9;
+  const nameCol = d.nameAc ? d.ac : d.ink;
+  const contact = 'TEL 000-0000-0000';
+  c.textBaseline = 'alphabetic';
+  if (d.lay === 'vR'){
+    // vertical name on the right
+    const chars = Array.from(name);
+    let ns = Math.min(d.ns, (H - m*2) / (chars.length * 1.02));
+    ns = Math.max(ns, 3.5);
+    setFont(c,d,ns); c.fillStyle = nameCol; c.textAlign = 'center'; c.textBaseline = 'top';
+    const nx = W - m - ns/2; let y = m;
+    for (const ch of chars){ if(/\s/.test(ch)){ y += ns*.45; continue; } c.fillText(ch, nx, y); y += ns*1.02; }
+    setFont(c,d,tsz,400); c.fillStyle = d.ink;
+    const tx = nx - ns/2 - tsz*1.2; y = m + ns*.3;
+    for (const ch of Array.from(title)){ if(/\s/.test(ch)){ y += tsz*.5; continue; } if(y > H - m) break; c.fillText(ch, tx, y); y += tsz*1.1; }
+    if (d.rule){ c.fillRect(tx - tsz*1.1, m, .3, H - m*2); }
+    if (d.logo !== 'none') drawLogo(c, d, m, m, d.ls, initial);
+    c.textAlign = 'left'; c.textBaseline = 'alphabetic'; setFont(c,d,csz,400); c.fillStyle = d.ink;
+    c.fillText(contact, m, H - m*.6);
+  } else {
+    const maxW = W - m*2 - (d.lay==='hL' && d.logo!=='none' ? d.ls + 2 : 0);
+    let ns, ny, ty, align, x;
+    if (d.lay === 'hC'){ align='center'; x=W/2; ny=H*.6 + d.ns*.3; ty=ny + tsz*1.8; }
+    else if (d.lay === 'hB'){ align='left'; x=m; ny=H - m - csz*1.6; ty=ny - d.ns - tsz*.4; }
+    else { align='left'; x=m; ny=H*.55 + d.ns*.35; ty=ny - d.ns - tsz*.6; }
+    c.textAlign = align;
+    ns = fitSize(c,d,name,d.ns,maxW); c.fillStyle = nameCol;
+    if (d.lay === 'hB') { /* keep */ }
+    c.fillText(name, x, ny);
+    fitSize(c,d,title,tsz,maxW,400); c.fillStyle = d.ink;
+    c.fillText(title, x, Math.max(ty, m + tsz));
+    if (d.rule){ const rw = Math.min(maxW, 30); c.fillStyle = d.ac; c.fillRect(align==='center'? x-rw/2 : x, ny + 1.8, rw, .45); }
+    setFont(c,d,csz,400); c.fillStyle = d.ink; c.textAlign = align==='center' ? 'center' : 'left';
+    if (d.lay !== 'hB') c.fillText(contact, x, H - m*.6);
+    else { c.textAlign = 'right'; c.fillText(contact, W - m, H - m*.6); }
+    if (d.logo !== 'none'){
+      if (d.lay === 'hC') drawLogo(c, d, W/2 - d.ls/2, m*.8, d.ls, initial);
+      else if (d.lay === 'hB') drawLogo(c, d, m, m, d.ls, initial);
+      else drawLogo(c, d, W - m - d.ls, m, d.ls, initial);
+    }
+  }
+  c.restore();
+}
+
+// ---------- sound ----------
+let ac = null, noiseBuf = null;
+function audio(){
+  if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ ac = null; } }
+  if (ac && ac.state === 'suspended') ac.resume().catch(()=>{});
+  return ac;
+}
+function ready(){ return ac && ac.state === 'running'; }
+function click(vol){
+  if (!ready()) return;
+  if (!noiseBuf){ noiseBuf = ac.createBuffer(1, ac.sampleRate*0.05, ac.sampleRate); const ch = noiseBuf.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*Math.pow(1-i/ch.length,3); }
+  const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = 1500 + Math.random()*3000; f.Q.value = 3;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + .035);
+  s.connect(f).connect(g).connect(ac.destination); s.start(t); s.stop(t + .05);
+}
+function thunk(){
+  if (!ready()) return;
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'square'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(50, t+.08);
+  g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t+.12);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.14);
+}
+function chime(){
+  if (!ready()) return;
+  [660, 880, 1320].forEach((fq, k) => {
+    const t = ac.currentTime + k*.09, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = fq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12, t+.01); g.gain.exponentialRampToValueAtTime(.001, t+.9);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+1);
+  });
+}
+function whoosh(){
+  if (!ready()) return;
+  const len = ac.sampleRate*1.2, b = ac.createBuffer(1, len, ac.sampleRate), ch = b.getChannelData(0);
+  for (let i=0;i<len;i++) ch[i] = (Math.random()*2-1);
+  const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = b; f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(2500, t+1.1);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t+.5); g.gain.linearRampToValueAtTime(0, t+1.2);
+  s.connect(f).connect(g).connect(ac.destination); s.start(t);
+}
+addEventListener('pointerdown', audio, { once: false });
+
+// ---------- state ----------
+const st = { phase: 'idle', cards: [], printed: 0, t0: 0, calc: 0, sortT0: 0, selected: -1, cellCard: new Int32Array(N), name: '', title: '' };
+window.__cards = st;
+let dpr = 1, cssW = 0, cssH = 0, cw = 0, ch = 0, ox = 0, oy = 0;
+function layout(){
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cssW = cv.clientWidth; cssH = cv.clientHeight;
+  cv.width = Math.round(cssW*dpr); cv.height = Math.round(cssH*dpr);
+  const pad = 16, bottom = 40;
+  cw = Math.min((cssW - pad*2) / COLS, (cssH - pad - bottom) / ROWS * UW/UH);
+  ch = cw * UH/UW;
+  ox = (cssW - cw*COLS)/2; oy = pad + ((cssH - pad - bottom) - ch*ROWS)/2;
+  dirty = true;
+}
+let dirty = true;
+addEventListener('resize', layout);
+
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+
+function render(now){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  const g = Math.max(.5, cw*.04), sel = st.selected;
+  let anim = false;
+  for (let i=0;i<st.printed;i++){
+    const c = st.cards[i];
+    let gx = c.fx, gy = c.fy, sc = 1, al = 1;
+    const age = now - c.tp;
+    if (age < 180){ const k = age/180; sc = 1 + (1-k)*1.4; al = k; anim = true; }
+    if (st.phase === 'sort' || st.phase === 'done'){
+      const t = Math.min(1, Math.max(0, (now - st.sortT0 - c.delay) / 1100));
+      if (t < 1) anim = true;
+      const e = ease(t);
+      gx = c.fx + (c.tx - c.fx)*e; gy = c.fy + (c.ty - c.fy)*e - Math.sin(Math.PI*t)*c.arc;
+      sc *= 1 - Math.sin(Math.PI*t)*.35;
+    }
+    let dy = 0;
+    if (sel >= 0 && i !== sel){ al *= .28; dy = ch*.12; }
+    const w = (cw - g)*sc, h = (ch - g)*sc;
+    const x = ox + gx*cw + (cw - w)/2, y = oy + gy*ch + (ch - h)/2 + dy;
+    ctx.globalAlpha = al;
+    ctx.drawImage(atlas, c.ax, c.ay, UW, UH, x, y, w, h);
+  }
+  ctx.globalAlpha = 1;
+  if (sel >= 0){
+    const c = st.cards[sel];
+    ctx.drawImage(atlas, c.ax, c.ay, UW, UH, ox + c.tx*cw, oy + c.ty*ch, cw, ch);
+    ctx.strokeStyle = '#f5c04a'; ctx.lineWidth = 2; ctx.strokeRect(ox + c.tx*cw - 1, oy + c.ty*ch - 1, cw + 2, ch + 2);
+  }
+  return anim;
+}
+
+let lastClickSound = 0;
+function loop(now){
+  if (st.phase === 'print'){
+    const elapsed = now - st.t0;
+    const want = Math.min(N, Math.floor(elapsed / 1000 * N) + 1);
+    const before = st.printed;
+    const c0 = performance.now();
+    while (st.printed < want) printOne(st.printed, now);
+    st.calc += performance.now() - c0;
+    if (st.printed > before){
+      if (now - lastClickSound > 14){ click(.35); lastClickSound = now; }
+      if (Math.floor(st.printed/100) > Math.floor(before/100)) thunk();
+      $('counter').innerHTML = `${st.printed} <small>/ 1000 案</small>`;
+      $('ms').textContent = `経過 ${Math.round(elapsed)} ms`;
+      const lines = [];
+      for (let k = st.printed-1; k >= Math.max(0, st.printed-28); k--) lines.push(`No.${String(k+1).padStart(4,'0')} ▸ ${st.cards[k].rev}`);
+      $('log').textContent = lines.join('\n');
+    }
+    if (st.printed >= N){
+      const total = now - st.t0;
+      $('ms').innerHTML = `刷了 ${Math.round(total)} ms<br>うち描画計算 ${Math.round(st.calc)} ms`;
+      st.phase = 'hold';
+      $('status').textContent = '1000 案 刷り上がり。明るさを測っています…';
+      setTimeout(startSort, 450);
+    }
+    dirty = true;
+  }
+  const anim = (dirty || st.phase === 'sort' || st.phase === 'print') ? render(now) : false;
+  dirty = anim;
+  if (st.phase === 'sort' && now - st.sortT0 > 1100 + 520){ finishSort(); }
+  requestAnimationFrame(loop);
+}
+
+function printOne(i, now){
+  const c = st.cards[i];
+  sctx.setTransform(1,0,0,1,0,0);
+  sctx.clearRect(0,0,UW,UH);
+  drawCard(sctx, c.d, st.name, st.title);
+  // luminance
+  const px = sctx.getImageData(0,0,UW,UH).data;
+  let s = 0, n = 0;
+  for (let k=0;k<px.length;k+=8){ const a = px[k+3]; if (a < 128) continue; s += .299*px[k] + .587*px[k+1] + .114*px[k+2]; n++; }
+  c.lum = n ? s/n/255 : 0;
+  actx.clearRect(c.ax, c.ay, UW, UH);
+  actx.drawImage(scratch, c.ax, c.ay);
+  c.tp = now;
+  st.printed = i + 1;
+}
+
+// ---------- mosaic ----------
+function targetCells(chr){
+  const tw = COLS*8, th = Math.round(ROWS*8*UH/UW);
+  const t = document.createElement('canvas'); t.width = tw; t.height = th;
+  const tc = t.getContext('2d', { willReadFrequently: true });
+  tc.fillStyle = '#fff'; tc.fillRect(0,0,tw,th);
+  tc.fillStyle = '#000'; tc.textAlign = 'center'; tc.textBaseline = 'alphabetic';
+  const fam = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+  let size = th;
+  tc.font = `900 ${size}px ${fam}`;
+  let m = tc.measureText(chr);
+  let bw = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, bh = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+  const k = Math.min(tw*.9 / bw, th*.9 / bh);
+  size *= k; tc.font = `900 ${size}px ${fam}`; m = tc.measureText(chr);
+  bw = m.actualBoundingBoxLeft + m.actualBoundingBoxRight; bh = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+  const x = tw/2 + (m.actualBoundingBoxLeft - m.actualBoundingBoxRight)/2;
+  const y = th/2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent)/2;
+  tc.fillText(chr, x, y);
+  const data = tc.getImageData(0,0,tw,th).data;
+  const t2 = document.createElement('canvas'); t2.width = tw; t2.height = th;
+  const tc2 = t2.getContext('2d', { willReadFrequently: true });
+  tc2.fillStyle = '#fff'; tc2.fillRect(0,0,tw,th); tc2.filter = 'blur(14px)'; tc2.drawImage(t, 0, 0);
+  const blur = tc2.getImageData(0,0,tw,th).data;
+  const out = new Float32Array(N);
+  const cwp = tw/COLS, chp = th/ROWS;
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    let s = 0, sb = 0, n = 0;
+    for (let y=Math.floor(r*chp); y<Math.floor((r+1)*chp); y++) for (let x=Math.floor(c*cwp); x<Math.floor((c+1)*cwp); x++){ s += data[(y*tw+x)*4]; sb += blur[(y*tw+x)*4]; n++; }
+    out[r*COLS+c] = s/n/255 + .35*sb/n/255;
+  }
+  return out;
+}
+function startSort(){
+  const chr = Array.from(st.name.replace(/\s/g,''))[0] || '名';
+  const tgt = targetCells(chr);
+  const r = mulberry32(hashStr(st.name) ^ 99);
+  const cells = Array.from({length:N}, (_,i)=>i).sort((a,b)=> (tgt[a]-tgt[b]) || (r()-.5));
+  const order = Array.from({length:N}, (_,i)=>i).sort((a,b)=> st.cards[a].lum - st.cards[b].lum);
+  for (let k=0;k<N;k++){
+    const c = st.cards[order[k]], cell = cells[k];
+    c.tx = cell % COLS; c.ty = Math.floor(cell / COLS);
+    c.delay = (c.ty / ROWS) * 260 + Math.random()*260;
+    c.arc = 1 + Math.random()*3;
+    st.cellCard[cell] = order[k];
+  }
+  st.phase = 'sort'; st.sortT0 = performance.now();
+  cv.style.transform = 'scale(1.06)';
+  $('status').textContent = '明るさ順に並べ替え中…';
+  whoosh();
+}
+function finishSort(){
+  st.phase = 'done'; dirty = true;
+  for (const c of st.cards){ c.fx = c.tx; c.fy = c.ty; }
+  cv.style.transform = 'scale(.94)';
+  const chr = Array.from(st.name.replace(/\s/g,''))[0] || '名';
+  $('caption').innerHTML = `1000 案を明るさ順に並べ替えると…… <b>「${chr}」</b>`;
+  $('caption').style.opacity = 1;
+  $('status').textContent = '引いて見ると、名前の 1 文字目。1 枚選んでください';
+  $('go').disabled = false;
+  chime();
+}
+
+// ---------- run ----------
+function run(){
+  audio();
+  st.name = ($('nm').value.trim() || '山田 はな').slice(0,12);
+  st.title = ($('tt').value.trim() || '肩書き').slice(0,20);
+  const base = hashStr(st.name + '|' + st.title);
+  st.cards = [];
+  for (let i=0;i<N;i++){
+    const seed = (base ^ Math.imul(i+1, 2654435761)) >>> 0;
+    const d = makeDesign(seed);
+    const rr2 = mulberry32(seed ^ 0x5bd1e995);
+    const col = i % COLS, row = Math.floor(i / COLS);
+    st.cards.push({ d, rev: review(d, rr2), lum: 0, ax: col*UW, ay: row*UH, fx: col, fy: row, tx: col, ty: row, tp: 0, delay: 0, arc: 0 });
+  }
+  actx.clearRect(0,0,atlas.width,atlas.height);
+  st.printed = 0; st.calc = 0; st.selected = -1;
+  st.t0 = performance.now(); st.phase = 'print';
+  closeModal();
+  cv.style.transform = 'none';
+  $('caption').style.opacity = 0;
+  $('status').textContent = '印刷所の AI がデザイン中…';
+  $('go').disabled = true;
+  dirty = true;
+}
+$('go').addEventListener('click', run);
+[$('nm'), $('tt')].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' && !$('go').disabled) run(); }));
+
+// ---------- pick a card ----------
+const big = $('big'), bctx = big.getContext('2d');
+cv.addEventListener('click', e => {
+  if (st.phase !== 'done') return;
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * cssW, y = (e.clientY - r.top) / r.height * cssH;
+  const col = Math.floor((x - ox) / cw), row = Math.floor((y - oy) / ch);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+  openCard(st.cellCard[row*COLS + col]);
+});
+function openCard(i){
+  const c = st.cards[i];
+  st.selected = i; dirty = true;
+  const pxW = Math.round(big.getBoundingClientRect().width || 344);
+  const sc = Math.max(2, window.devicePixelRatio || 1);
+  big.width = Math.round(pxW*sc); big.height = Math.round(pxW*sc*UH/UW);
+  $('modal').classList.add('on');
+  const w = big.getBoundingClientRect().width || 344;
+  big.width = Math.round(w*sc); big.height = Math.round(w*sc*UH/UW);
+  bctx.setTransform(big.width/UW,0,0,big.width/UW,0,0);
+  bctx.clearRect(0,0,UW,UH);
+  drawCard(bctx, c.d, st.name, st.title);
+  $('info').querySelector('.no').textContent = `案 No.${String(i+1).padStart(4,'0')}`;
+  $('info').querySelector('.rev').textContent = `AI 講評: ${c.rev}`;
+  const wrap = $('bigwrap'); wrap.style.animation = 'none'; void wrap.offsetWidth; wrap.style.animation = '';
+  click(.5); thunk();
+}
+function closeModal(){ $('modal').classList.remove('on'); st.selected = -1; dirty = true; }
+$('modal').addEventListener('click', closeModal);
+addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+layout();
+requestAnimationFrame(loop);
+setTimeout(run, 350);
+})();
+</script>
+</body>
+</html>

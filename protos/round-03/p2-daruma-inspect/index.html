@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>だるまさんが検品した</title>
+<style>
+:root{--bg:#121418;--panel:#1b1e24;--line:#2b3038;--ink:#e9ecef;--dim:#8a93a0;--red:#ff3b30;--cyan:#33e1ff;--ok:#2ecc71;--paper:#f4efe3;--yellow:#e8c547}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+#app{display:grid;grid-template-columns:1fr 300px;grid-template-rows:auto 1fr auto;height:100%}
+header{grid-column:1/3;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0;letter-spacing:.05em}
+header .sub{color:var(--dim);font-size:12px}
+.pill{margin-left:auto;font-size:12px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;color:var(--cyan);white-space:nowrap}
+#stage{position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 20%,#2a2f38 0,#15181d 70%);touch-action:none}
+#stage.flash{animation:flash .9s}
+@keyframes flash{0%,100%{box-shadow:inset 0 0 0 0 var(--red)}10%,50%{box-shadow:inset 0 0 0 10px var(--red)}30%,70%{box-shadow:inset 0 0 0 4px var(--red)}}
+#chant{position:absolute;top:44px;left:0;right:0;text-align:center;white-space:nowrap;font-size:clamp(15px,2.9vw,34px);font-weight:800;letter-spacing:.04em;min-height:1.3em;z-index:3}
+#chant span{display:inline-block;animation:pop .18s ease-out}
+#chant span.dot{color:var(--dim);font-weight:400;margin:0 .05em}
+#chant.done{color:var(--red)}
+@keyframes pop{from{transform:scale(1.8);opacity:0}to{transform:scale(1);opacity:1}}
+#rate{position:absolute;top:14px;right:12px;font:11px ui-monospace,Menlo,monospace;color:var(--dim);z-index:3}
+#status{position:absolute;top:14px;left:12px;font-size:13px;font-weight:700;padding:4px 10px;border-radius:6px;background:#0008;z-index:3}
+#status.go{color:var(--ok)}#status.stop{color:#fff;background:var(--red)}
+#lane{position:absolute;left:50%;bottom:0;width:92%;height:60%;transform:translateX(-50%);clip-path:polygon(40% 0,60% 0,100% 100%,0 100%);background:repeating-linear-gradient(0deg,#2b3039 0 16px,#20242b 16px 32px)}
+#lane::after{content:"";position:absolute;inset:0;background:linear-gradient(#15181d,transparent 45%)}
+#ai{position:absolute;left:50%;top:15%;width:min(30vh,240px);aspect-ratio:1;transform:translateX(-50%) scale(var(--s,.75));transform-origin:50% 0;perspective:700px;z-index:2;transition:transform .3s}
+.card{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .26s cubic-bezier(.4,1.7,.5,1)}
+.card.front{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.face.f{transform:rotateY(180deg)}
+.face svg{width:100%;height:100%;display:block}
+.hum .card{animation:hum .3s infinite alternate}
+@keyframes hum{from{translate:0 0}to{translate:0 -3px}}
+#iris{transform-origin:100px 92px;transform-box:view-box}
+.front #iris{animation:scan 1.1s ease-in-out infinite alternate}
+@keyframes scan{from{transform:translateX(-14px)}to{transform:translateX(14px)}}
+#beam{position:absolute;left:50%;top:calc(15% + min(30vh,240px)*.35);width:80%;height:70%;transform:translateX(-50%);clip-path:polygon(47% 0,53% 0,100% 100%,0 100%);background:linear-gradient(#ff3b3088,#ff3b3000);opacity:0;z-index:1;pointer-events:none}
+#beam.on{opacity:1;animation:flick .12s infinite alternate}
+@keyframes flick{from{opacity:.55}to{opacity:.9}}
+#me{position:absolute;left:50%;bottom:3%;width:min(16vh,120px);transform:translateX(-50%) scale(var(--ms,1));transform-origin:50% 100%;z-index:2;transition:bottom .25s,transform .25s}
+#me.ng{outline:3px solid var(--red);outline-offset:4px}
+#me .tag{position:absolute;top:-22px;left:-4px;background:var(--red);color:#fff;font:700 11px ui-monospace,Menlo,monospace;padding:1px 5px;display:none}
+#me.ng .tag{display:block}
+#meter{position:absolute;right:12px;top:48px;bottom:16px;width:14px;border:1px solid var(--line);border-radius:8px;overflow:hidden;z-index:3;background:#0006}
+#meter i{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(var(--ok),#1e8e4f);transition:height .2s}
+#meterLbl{position:absolute;right:30px;bottom:16px;font-size:11px;color:var(--dim);writing-mode:vertical-rl;z-index:3}
+#slip{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:10;background:#000a}
+#slip.on{display:flex;animation:slipIn .15s ease-out}
+@keyframes slipIn{from{transform:scale(1.15);opacity:0}to{transform:scale(1);opacity:1}}
+.sheet{background:var(--paper);color:#222;border:3px solid var(--red);padding:12px 14px;width:min(92%,440px);box-shadow:0 10px 40px #000;font-family:ui-monospace,Menlo,"Hiragino Sans",monospace}
+.sheet .hd{display:flex;justify-content:space-between;font-size:11px;border-bottom:1px dashed #999;padding-bottom:4px;margin-bottom:8px}
+.sheet h2{margin:0 0 6px;color:var(--red);font-size:clamp(18px,3.4vw,26px);letter-spacing:.04em}
+.sheet canvas{width:100%;display:block;background:#000;border:1px solid #333}
+.sheet .row{font-size:12px;margin-top:6px;line-height:1.5}
+#stamp{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:11;background:#0009}
+#stamp.on{display:flex}
+#stamp .hanko{width:min(52vh,260px);aspect-ratio:1;border:10px solid var(--red);border-radius:50%;color:var(--red);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:min(9vh,52px);line-height:1.05;transform:rotate(-14deg);animation:stampIn .35s cubic-bezier(.2,1.8,.4,1);background:#fff1;text-shadow:0 0 1px var(--red)}
+#stamp .hanko small{font-size:.32em;letter-spacing:.2em}
+@keyframes stampIn{from{transform:rotate(-14deg) scale(3);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:1}}
+#stamp p{margin:16px 0 8px;font-size:14px}
+aside{border-left:1px solid var(--line);background:var(--panel);padding:10px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.mon h3{margin:0 0 4px;font-size:11px;color:var(--dim);font-weight:600;display:flex;justify-content:space-between}
+.mon canvas{width:100%;display:block;background:#000;border:1px solid var(--line);border-radius:4px;image-rendering:pixelated}
+#mbar{height:8px;background:#0006;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+#mbar i{display:block;height:100%;width:0;background:var(--cyan)}
+#log{font:11px/1.6 ui-monospace,Menlo,monospace;color:var(--dim);margin:0;padding:0;list-style:none}
+#log li.ng{color:#ff8a80}#log li.ok{color:#8be9a8}
+footer{grid-column:1/3;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--line)}
+button{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#262a32;color:var(--ink);cursor:pointer}
+button.primary{background:var(--cyan);color:#062028;border-color:var(--cyan);font-weight:700}
+.note{font-size:11px;color:var(--dim)}
+#how{font-size:12px;color:var(--ink)}
+@media (max-width:760px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr auto auto}
+  header{grid-column:1}
+  header .sub{display:none}
+  aside{border-left:0;border-top:1px solid var(--line);flex-direction:row;padding:6px;gap:6px;overflow:visible}
+  aside .mon{flex:1;min-width:0}
+  #logWrap,#mbarWrap{display:none}
+  footer{grid-column:1;padding:6px 10px}
+  #how{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>だるまさんが検品した</h1>
+    <span class="sub">印刷工場の検品カメラAIと、だるまさんがころんだ</span>
+    <span class="pill" id="mode">モード：代役（マウス）</span>
+  </header>
+
+  <main id="stage">
+    <div id="chant"></div>
+    <div id="status">準備中…</div>
+    <div id="rate"></div>
+    <div id="lane"></div>
+    <div id="beam"></div>
+    <div id="ai">
+      <div class="card" id="card">
+        <!-- 背面 -->
+        <div class="face b"><svg viewBox="0 0 200 200" aria-label="後ろを向いた検品AI">
+          <rect x="92" y="150" width="16" height="36" fill="#4a4f57"/>
+          <rect x="56" y="184" width="88" height="12" rx="4" fill="#3a3e45"/>
+          <rect x="22" y="28" width="156" height="126" rx="18" fill="#c9aa35" stroke="#111" stroke-width="4"/>
+          <g stroke="#7a6620" stroke-width="5" stroke-linecap="round">
+            <line x1="48" y1="56" x2="152" y2="56"/><line x1="48" y1="70" x2="152" y2="70"/><line x1="48" y1="84" x2="152" y2="84"/>
+          </g>
+          <rect x="54" y="100" width="92" height="34" rx="4" fill="#f4efe3" stroke="#111" stroke-width="2"/>
+          <text x="100" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="#111">検品AI 背面</text>
+          <text x="100" y="129" text-anchor="middle" font-size="9" fill="#c00">ふりむき注意</text>
+          <path d="M150 150 C 170 170, 185 160, 196 190" stroke="#222" stroke-width="5" fill="none"/>
+        </svg></div>
+        <!-- 正面 -->
+        <div class="face f"><svg viewBox="0 0 200 200" aria-label="振り向いた検品AI">
+          <defs>
+            <radialGradient id="lens" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#4a6a8a"/><stop offset=".6" stop-color="#14202c"/><stop offset="1" stop-color="#05080b"/></radialGradient>
+            <radialGradient id="glow"><stop offset="0" stop-color="#fff"/><stop offset=".25" stop-color="#ff6b5f"/><stop offset="1" stop-color="#ff3b30" stop-opacity="0"/></radialGradient>
+            <pattern id="hz" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="14" fill="#111"/></pattern>
+          </defs>
+          <rect x="92" y="150" width="16" height="36" fill="#4a4f57"/>
+          <rect x="56" y="184" width="88" height="12" rx="4" fill="#3a3e45"/>
+          <rect x="22" y="28" width="156" height="126" rx="18" fill="#e8c547" stroke="#111" stroke-width="4"/>
+          <rect x="24" y="30" width="152" height="12" fill="url(#hz)" opacity=".8"/>
+          <circle cx="100" cy="92" r="54" fill="#1a1a1a"/>
+          <circle cx="100" cy="92" r="46" fill="url(#lens)"/>
+          <circle cx="100" cy="92" r="30" fill="none" stroke="#2c3e50" stroke-width="2"/>
+          <g id="iris"><circle cx="100" cy="92" r="24" fill="url(#glow)"/><circle cx="100" cy="92" r="9" fill="#ff3b30"/></g>
+          <ellipse cx="82" cy="72" rx="10" ry="6" fill="#fff" opacity=".55"/>
+          <circle cx="40" cy="140" r="5" fill="#ff3b30"><animate attributeName="opacity" values="1;.2;1" dur="1s" repeatCount="indefinite"/></circle>
+          <text x="50" y="144" font-size="10" font-weight="700" fill="#111">REC</text>
+          <text x="160" y="144" text-anchor="end" font-size="9" fill="#111">QC-EYE</text>
+        </svg></div>
+      </div>
+    </div>
+    <div id="me">
+      <span class="tag">NG-01</span>
+      <svg viewBox="0 0 100 120" aria-label="印刷されただるま">
+        <rect x="4" y="4" width="92" height="112" fill="#f4efe3" stroke="#999" stroke-width="2"/>
+        <ellipse cx="50" cy="64" rx="34" ry="38" fill="#d62828"/>
+        <ellipse cx="50" cy="56" rx="20" ry="17" fill="#fde9d9"/>
+        <circle cx="43" cy="54" r="3.5" fill="#111"/><circle cx="57" cy="54" r="3.5" fill="#111"/>
+        <path d="M44 63 Q50 67 56 63" stroke="#111" stroke-width="2" fill="none"/>
+        <path d="M34 86 Q50 96 66 86" stroke="#f5c542" stroke-width="3" fill="none"/>
+        <text x="50" y="112" text-anchor="middle" font-size="9" fill="#555">検品前</text>
+      </svg>
+    </div>
+    <div id="meter"><i id="meterFill"></i></div>
+    <div id="meterLbl">出荷まで</div>
+
+    <div id="slip"><div class="sheet">
+      <div class="hd"><span>検査票 No.<b id="slipNo">0001</b></span><span id="slipTime"></span></div>
+      <h2 id="slipTitle">不良品 検出</h2>
+      <canvas id="slipCv" width="320" height="240"></canvas>
+      <div class="row" id="slipBody"></div>
+    </div></div>
+
+    <div id="stamp"><div class="hanko"><small>検品済</small>出荷<br>OK</div><p id="stampMsg"></p><button class="primary" id="again">もう一度 検品される</button></div>
+  </main>
+
+  <aside>
+    <div class="mon"><h3><span>検品カメラ（左右反転）</span><span id="monLbl">代役</span></h3><canvas id="mon" width="192" height="144"></canvas></div>
+    <div class="mon"><h3><span>フレーム差分（動いた画素）</span><span id="pct">0%</span></h3><canvas id="diff" width="80" height="60"></canvas></div>
+    <div id="mbarWrap"><div class="mon"><h3><span>動き量</span><span>しきい値 12%</span></h3></div><div id="mbar"><i id="mbarFill"></i></div></div>
+    <div id="logWrap"><div class="mon"><h3><span>検品ログ</span></h3></div><ul id="log"></ul></div>
+  </aside>
+
+  <footer>
+    <button class="primary" id="camBtn">カメラを使う</button>
+    <button id="sndBtn">音：ON</button>
+    <button id="resetBtn">最初から</button>
+    <span id="how">後ろを向いている間に動くほど前へ。振り向いたら止まれ。</span>
+    <span class="note">映像はこの端末の中だけで処理し、どこにも送信・保存しません。カメラが無いときはマウス（スマホは傾け・ゆすり）で代用。</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const W = 80, H = 60, N = W * H;
+const PHRASE = [...'だるまさんがけんぴんした'];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+// ---------- state ----------
+let mode = 'sim';           // 'sim' | 'cam'
+let phase = 'idle';         // chant | watch | pass | caught | win
+let progress = 0, catches = 0, slipNo = 0, lot = 1;
+let soundOn = true, unlocked = false;
+let watchFrom = 0, ignoreUntil = 0, overCount = 0;
+let lastM = 0, lastRatio = 0, lastMask = new Uint8Array(N);
+let timers = [];
+const after = (ms, fn) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
+const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+window.__dbg = { get phase() { return phase; }, get progress() { return progress; }, get catches() { return catches; }, get mode() { return mode; }, get m() { return lastM; } };
+
+// ---------- audio / speech / vibration ----------
+let ac = null;
+function unlock() {
+  if (unlocked) return;
+  unlocked = true;
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+  if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().catch(() => {});
+  }
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(t => window.addEventListener(t, unlock, { once: false, passive: true }));
+function tone(f, dur, type = 'sine', vol = .15, when = 0, to) {
+  if (!soundOn || !ac) return;
+  if (ac.state === 'suspended') ac.resume();
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .03);
+}
+const buzzer = () => { tone(130, .75, 'square', .16); tone(137, .75, 'sawtooth', .1); };
+const whir = () => tone(180, .25, 'sawtooth', .07, 0, 900);
+let jaVoice = null;
+function pickVoice() { if (!('speechSynthesis' in window)) return; const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => /^ja/i.test(v.lang)) || null; }
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text, rate = 1, pitch = 1) {
+  if (!soundOn || !unlocked || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP'; u.rate = Math.max(.5, Math.min(2.2, rate)); u.pitch = pitch;
+  if (jaVoice) u.voice = jaVoice;
+  try { speechSynthesis.speak(u); } catch (e) {}
+}
+const hush = () => { if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch (e) {} };
+const buzz = p => { if (unlocked && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
+
+// ---------- input sources ----------
+const mon = $('mon'), mctx = mon.getContext('2d');
+const ana = document.createElement('canvas'); ana.width = W; ana.height = H;
+const actx = ana.getContext('2d', { willReadFrequently: true });
+const diff = $('diff'), dctx = diff.getContext('2d');
+const dimg = dctx.createImageData(W, H);
+const glow = new Float32Array(N);
+let prev = null, video = null, stream = null;
+let simX = .5, simY = .55, jx = 0, jy = 0;
+
+window.addEventListener('pointermove', e => {
+  simX = Math.min(.92, Math.max(.08, e.clientX / innerWidth));
+  simY = Math.min(.85, Math.max(.3, e.clientY / innerHeight));
+}, { passive: true });
+window.addEventListener('devicemotion', e => {
+  const a = e.acceleration; if (!a || a.x == null) return;
+  jx = Math.max(-1, Math.min(1, a.x / 6)); jy = Math.max(-1, Math.min(1, a.y / 6));
+}, { passive: true });
+
+function drawSim() {
+  const w = mon.width, h = mon.height;
+  mctx.fillStyle = '#0e1216'; mctx.fillRect(0, 0, w, h);
+  mctx.strokeStyle = '#1c2630'; mctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 16) { mctx.beginPath(); mctx.moveTo(x + .5, 0); mctx.lineTo(x + .5, h); mctx.stroke(); }
+  for (let y = 0; y < h; y += 16) { mctx.beginPath(); mctx.moveTo(0, y + .5); mctx.lineTo(w, y + .5); mctx.stroke(); }
+  const x = (simX + jx * .12) * w, y = (simY + jy * .12) * h, s = h;
+  mctx.fillStyle = '#d7dee3';
+  mctx.beginPath(); mctx.arc(x, y - s * .2, s * .09, 0, 7); mctx.fill();
+  mctx.beginPath(); mctx.roundRect ? mctx.roundRect(x - s * .12, y - s * .1, s * .24, s * .34, 8) : mctx.rect(x - s * .12, y - s * .1, s * .24, s * .34); mctx.fill();
+  mctx.fillStyle = '#5c6670'; mctx.font = '10px sans-serif'; mctx.fillText('代役（マウス／傾き）', 6, h - 6);
+  jx *= .8; jy *= .8;
+}
+function drawCam() {
+  const w = mon.width, h = mon.height;
+  mctx.save(); mctx.translate(w, 0); mctx.scale(-1, 1); mctx.drawImage(video, 0, 0, w, h); mctx.restore();
+}
+
+function sample() {
+  if (mode === 'cam' && video && video.readyState >= 2) drawCam(); else drawSim();
+  actx.drawImage(mon, 0, 0, W, H);
+  const d = actx.getImageData(0, 0, W, H).data;
+  const g = new Uint8Array(N), mask = new Uint8Array(N);
+  let cnt = 0;
+  for (let i = 0; i < N; i++) g[i] = (d[i * 4] * .3 + d[i * 4 + 1] * .59 + d[i * 4 + 2] * .11) | 0;
+  if (prev) for (let i = 0; i < N; i++) if (Math.abs(g[i] - prev[i]) > 28) { mask[i] = 1; cnt++; }
+  prev = g;
+  const ratio = cnt / N;
+  const m = Math.min(1, ratio * (mode === 'cam' ? 5 : 9));
+  // diff visual
+  const o = dimg.data;
+  for (let i = 0; i < N; i++) {
+    glow[i] = Math.max(glow[i] * .78, mask[i] ? 1 : 0);
+    const k = glow[i], base = g[i] * .18;
+    o[i * 4] = base * .6 + 51 * k; o[i * 4 + 1] = base * .8 + 225 * k; o[i * 4 + 2] = base + 255 * k; o[i * 4 + 3] = 255;
+  }
+  dctx.putImageData(dimg, 0, 0);
+  $('pct').textContent = Math.round(m * 100) + '%';
+  $('mbarFill').style.width = Math.round(m * 100) + '%';
+  $('mbarFill').style.background = m > .12 ? 'var(--red)' : 'var(--cyan)';
+  lastM = m; lastRatio = ratio; lastMask = mask;
+  return m;
+}
+
+function findBoxes(mask) {
+  const CS = 5, GW = W / CS, GH = H / CS, cell = new Uint8Array(GW * GH);
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
+    let c = 0;
+    for (let y = 0; y < CS; y++) for (let x = 0; x < CS; x++) c += mask[(gy * CS + y) * W + gx * CS + x];
+    if (c >= 4) cell[gy * GW + gx] = 1;
+  }
+  const seen = new Uint8Array(GW * GH), boxes = [];
+  for (let i = 0; i < cell.length; i++) {
+    if (!cell[i] || seen[i]) continue;
+    const st = [i]; seen[i] = 1;
+    let x0 = 99, y0 = 99, x1 = -1, y1 = -1, n = 0;
+    while (st.length) {
+      const k = st.pop(), kx = k % GW, ky = (k / GW) | 0; n++;
+      x0 = Math.min(x0, kx); x1 = Math.max(x1, kx); y0 = Math.min(y0, ky); y1 = Math.max(y1, ky);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = kx + dx, ny = ky + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+        const j = ny * GW + nx; if (cell[j] && !seen[j]) { seen[j] = 1; st.push(j); }
+      }
+    }
+    boxes.push({ x: x0 * CS, y: y0 * CS, w: (x1 - x0 + 1) * CS, h: (y1 - y0 + 1) * CS, n });
+  }
+  boxes.sort((a, b) => b.n - a.n);
+  if (!boxes.length) {
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    for (let i = 0; i < N; i++) if (mask[i]) { const x = i % W, y = (i / W) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 >= x0) boxes.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, n: 1 });
+  }
+  return boxes.slice(0, 4);
+}
+function where(b) {
+  const cx = (b.x + b.w / 2) / W, cy = (b.y + b.h / 2) / H;
+  const c = cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '中', r = cy < 1 / 3 ? '上' : cy > 2 / 3 ? '下' : '中';
+  if (c === '中' && r === '中') return '中央';
+  if (c === '中') return '中' + r; if (r === '中') return c;
+  return c + r;
+}
+
+// ---------- UI helpers ----------
+const card = $('card'), aiEl = $('ai'), beam = $('beam'), meEl = $('me'), stage = $('stage');
+function setFacing(on) { card.classList.toggle('front', on); beam.classList.toggle('on', on); }
+function setStatus(t, cls) { const s = $('status'); s.textContent = t; s.className = cls || ''; }
+function render() {
+  const p = Math.min(100, progress);
+  aiEl.style.setProperty('--s', (.72 + p / 100 * .5).toFixed(3));
+  meEl.style.bottom = (3 + p * .5) + '%';
+  meEl.style.setProperty('--ms', (1 - p * .0055).toFixed(3));
+  $('meterFill').style.height = p + '%';
+  $('lane').style.backgroundPositionY = (p * 9) + 'px';
+}
+function log(text, cls) {
+  const li = document.createElement('li'); li.textContent = text; li.className = cls || '';
+  const ul = $('log'); ul.prepend(li); while (ul.children.length > 8) ul.lastChild.remove();
+}
+const nowStr = () => { const d = new Date(); return d.toTimeString().slice(0, 8); };
+
+// ---------- game ----------
+function startChant() {
+  if (phase === 'win') return;
+  phase = 'chant'; setFacing(false); aiEl.classList.add('hum');
+  meEl.classList.remove('ng'); $('slip').classList.remove('on');
+  setStatus('後ろ向き中 — 動け！', 'go');
+  const ch = $('chant'); ch.innerHTML = ''; ch.classList.remove('done');
+  const rate = rand(.55, 1.75), step = 170 / rate;
+  const pause = Math.random() < .55 ? rand(150, 1200) : 0;
+  $('rate').textContent = `読み上げ ×${rate.toFixed(2)}${pause ? ' ため' + (pause / 1000).toFixed(1) + 's' : ''}`;
+  hush(); say('だるまさんが、けんぴん', rate, rand(.7, 1.4));
+  let t = 0;
+  PHRASE.forEach((c, i) => {
+    if (i === 10) { t += pause; after(t, () => say('した', rate * 1.3, 1.5)); }
+    after(t, () => {
+      if (i) { const d = document.createElement('span'); d.className = 'dot'; d.textContent = '・'; ch.appendChild(d); }
+      const s = document.createElement('span'); s.textContent = c; ch.appendChild(s);
+      tone(520 + i * 30, .05, 'triangle', .05);
+    });
+    t += step;
+  });
+  after(t + 40, turn);
+}
+function turn() {
+  if (phase !== 'chant') return;
+  phase = 'watch'; aiEl.classList.remove('hum'); setFacing(true); whir();
+  $('chant').classList.add('done');
+  setStatus('検査中 — 動くな', 'stop');
+  watchFrom = performance.now() + 300; overCount = 0;
+  after(rand(1300, 2300), () => {
+    if (phase !== 'watch') return;
+    phase = 'pass';
+    const lines = ['異常なし', '静止を確認', '…今、動きませんでした？', '良品です（たぶん）'];
+    const l = lines[(Math.random() * lines.length) | 0];
+    setStatus(l, 'go'); log(`${nowStr()} 検査 ${l}`, 'ok');
+    after(650, startChant);
+  });
+}
+function caught() {
+  phase = 'caught'; catches++; slipNo++;
+  const boxes = findBoxes(lastMask);
+  const main = boxes[0] || { x: 30, y: 20, w: 20, h: 20 };
+  const pct = Math.max(1, Math.min(99, Math.round(lastM * 100)));
+  const loc = where(main);
+  hush(); buzzer(); buzz([220, 80, 220]); say('ふりょうひん、はっけん', 1.3, .6);
+  stage.classList.remove('flash'); void stage.offsetWidth; stage.classList.add('flash');
+  meEl.classList.add('ng');
+  // freeze: draw slip image + overlay on monitor
+  const sc = $('slipCv'), sx = sc.getContext('2d'), k = sc.width / W;
+  sx.drawImage(mon, 0, 0, sc.width, sc.height);
+  sx.fillStyle = '#0006'; sx.fillRect(0, 0, sc.width, sc.height);
+  sx.globalCompositeOperation = 'lighter'; sx.globalAlpha = .7; sx.imageSmoothingEnabled = false;
+  sx.drawImage(diff, 0, 0, sc.width, sc.height);
+  sx.globalCompositeOperation = 'source-over'; sx.globalAlpha = 1;
+  drawBoxes(sx, boxes, k, 3);
+  drawBoxes(mctx, boxes, mon.width / W, 2);
+  sx.fillStyle = '#ff3b30'; sx.font = 'bold 12px ui-monospace,Menlo,monospace'; sx.fillText('● REC  ' + nowStr(), 8, sc.height - 8);
+  $('slipNo').textContent = String(slipNo).padStart(4, '0');
+  $('slipTime').textContent = nowStr();
+  $('slipTitle').textContent = `不良品 検出：${loc} 動き ${pct}%`;
+  const back = Math.min(progress, 40);
+  $('slipBody').innerHTML = `品名：印刷だるま（${mode === 'cam' ? 'あなた' : '代役'}） / 検出 ${boxes.length || 1} か所` +
+    (boxes.length > 1 ? '<br><b>複数の場所で動きを検出。誰が動いたかは特定できません。</b>' : '') +
+    `<br>処置：再検査ラインへ差し戻し（−${Math.round(back)}）`;
+  $('slip').classList.add('on');
+  setStatus('不良品 検出', 'stop');
+  log(`${nowStr()} NG-${String(slipNo).padStart(2, '0')} ${loc} ${pct}% 差し戻し`, 'ng');
+  progress -= back;
+  after(1500, () => { render(); $('slip').classList.remove('on'); prev = null; after(350, startChant); });
+}
+function drawBoxes(c, boxes, k, lw) {
+  c.save(); c.lineWidth = lw; c.font = `bold ${lw * 4 + 2}px ui-monospace,Menlo,monospace`;
+  boxes.forEach((b, i) => {
+    const x = b.x * k, y = b.y * k, w = b.w * k, h = b.h * k, lbl = 'NG-' + String(i + 1).padStart(2, '0');
+    c.strokeStyle = '#ff3b30'; c.strokeRect(x, y, w, h);
+    const tw = c.measureText(lbl).width + 8, th = lw * 4 + 6;
+    c.fillStyle = '#ff3b30'; c.fillRect(x - lw / 2, Math.max(0, y - th), tw, th);
+    c.fillStyle = '#fff'; c.fillText(lbl, x + 4 - lw / 2, Math.max(th - 4, y - 4));
+  });
+  c.restore();
+}
+function win() {
+  phase = 'win'; clearTimers(); hush(); setFacing(true); aiEl.classList.remove('hum');
+  setStatus('出荷 OK', 'go');
+  tone(90, .25, 'square', .25); tone(660, .2, 'triangle', .12, .25); tone(880, .35, 'triangle', .12, .45);
+  buzz(120); say('しゅっか、オーケー', 1, 1.2);
+  $('stampMsg').textContent = `LOT-${String(lot).padStart(3, '0')} 出荷 / 不良判定 ${catches} 回`;
+  $('stamp').classList.add('on');
+  log(`${nowStr()} LOT-${String(lot).padStart(3, '0')} 出荷 OK`, 'ok');
+}
+function reset() {
+  clearTimers(); hush();
+  progress = 0; catches = 0; lot++; phase = 'idle';
+  $('stamp').classList.remove('on'); $('slip').classList.remove('on');
+  render(); after(500, startChant);
+}
+
+// ---------- loop ----------
+let lastT = performance.now(), acc = 0;
+function loop(t) {
+  const dt = Math.min(.2, (t - lastT) / 1000); lastT = t; acc += dt;
+  if (acc >= 1 / 15) {
+    const sdt = acc; acc = 0;
+    if (phase !== 'caught') {
+      const m = sample();
+      const live = t > ignoreUntil;
+      if (phase === 'chant' && live) {
+        progress += m * 14 * sdt;
+        if (progress >= 100) { progress = 100; render(); win(); }
+        else render();
+      } else if (phase === 'watch' && live && t > watchFrom) {
+        overCount = m > .12 ? overCount + 1 : 0;
+        if (overCount >= 2 || m > .35) caught();
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+// ---------- camera ----------
+async function startCamera() {
+  unlock();
+  const btn = $('camBtn');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { fallback('このブラウザではカメラが使えません'); return; }
+  btn.disabled = true; btn.textContent = 'カメラ許可を待っています…';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }, audio: false });
+    video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.setAttribute('playsinline', '');
+    video.srcObject = stream; await video.play();
+    mode = 'cam'; prev = null; ignoreUntil = performance.now() + 1500;
+    $('mode').textContent = 'モード：検品カメラ'; $('monLbl').textContent = 'LIVE';
+    btn.textContent = 'カメラ使用中'; log(`${nowStr()} カメラ接続（端末内処理）`);
+  } catch (e) {
+    fallback('カメラが使えないので、マウス／傾きで続けます');
+  }
+}
+function fallback(msg) {
+  mode = 'sim'; const btn = $('camBtn'); btn.disabled = false; btn.textContent = 'カメラを使う';
+  log(`${nowStr()} ${msg}`);
+}
+
+$('camBtn').addEventListener('click', startCamera);
+$('sndBtn').addEventListener('click', () => { soundOn = !soundOn; $('sndBtn').textContent = '音：' + (soundOn ? 'ON' : 'OFF'); if (!soundOn) hush(); });
+$('resetBtn').addEventListener('click', reset);
+$('again').addEventListener('click', reset);
+
+render();
+log(`${nowStr()} 検品ライン稼働（デモ：代役モード）`);
+requestAnimationFrame(loop);
+after(700, startChant);
+})();
+</script>
+</body>
+</html>

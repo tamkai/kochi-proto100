@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ためらいの再生</title>
+<style>
+  :root{
+    --bg:#ece6da; --paper:#fbf7ee; --ink:#232a3d; --pencil:#9a958c; --rule:rgba(110,130,165,.30);
+    --accent:#8c2f2a; --lh:44px; --fs:20px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(ellipse at 30% 0%,rgba(255,255,255,.55),transparent 60%);
+    color:var(--ink);
+    font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","Noto Serif CJK JP",serif;
+    display:flex;flex-direction:column;align-items:center;
+    padding:22px 14px 28px;
+  }
+  header{width:min(760px,100%);display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+  header h1{font-size:18px;font-weight:600;letter-spacing:.25em;margin:0}
+  header p{margin:0;font-size:12px;color:#6d6658;letter-spacing:.05em}
+  .paper{
+    position:relative;width:min(760px,100%);
+    background:var(--paper);
+    border-radius:3px;
+    box-shadow:0 1px 0 rgba(0,0,0,.04),0 18px 40px -18px rgba(60,45,20,.35),0 2px 6px rgba(60,45,20,.08);
+    padding:26px 40px 26px;
+    overflow:hidden;
+  }
+  .paper::before{ /* 紙の繊維 */
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:
+      radial-gradient(circle at 20% 30%,rgba(160,130,80,.06) 0 1px,transparent 2px),
+      radial-gradient(circle at 70% 60%,rgba(160,130,80,.05) 0 1px,transparent 2px);
+    background-size:7px 9px,11px 13px;
+  }
+  .tag{font-size:12px;letter-spacing:.2em;color:#8a8170;display:flex;justify-content:space-between;gap:10px}
+  .tag b{font-weight:600;color:var(--accent)}
+  .prompt{font-size:15px;margin:10px 0 6px;letter-spacing:.06em;color:#4a4639}
+  .lines{
+    font-size:var(--fs);line-height:var(--lh);min-height:calc(var(--lh)*3 + 4px);
+    background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--lh) - 1px),var(--rule) calc(var(--lh) - 1px),var(--rule) var(--lh));
+    background-position:0 2px;
+    letter-spacing:.04em;word-break:break-all;white-space:normal;
+    position:relative;
+  }
+  textarea.lines{
+    width:100%;border:0;outline:0;resize:none;color:var(--ink);font-family:inherit;
+    background-color:transparent;padding:0;margin:0;display:block;height:calc(var(--lh)*3 + 4px);overflow:hidden;
+  }
+  textarea.lines::placeholder{color:#c3bba9}
+  #stage .ghost{
+    color:var(--pencil);text-decoration:line-through;text-decoration-color:rgba(110,105,95,.75);
+    text-decoration-thickness:1px;font-weight:300;
+  }
+  #stage .ghost.fresh{color:#6b665e}
+  .pause{position:relative;color:#7d8597;white-space:nowrap}
+  .pause small{font-size:11px;letter-spacing:0;color:#8a90a0;margin-left:1px;vertical-align:2px;font-family:ui-serif,serif}
+  .bleed{
+    position:absolute;left:50%;top:50%;width:var(--s);height:var(--s);
+    transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:0;
+    background:radial-gradient(closest-side,rgba(52,66,110,var(--a)),rgba(52,66,110,calc(var(--a)*.45)) 55%,transparent 100%);
+    filter:blur(3px);mix-blend-mode:multiply;
+  }
+  .pause span{position:relative;z-index:1}
+  .caret{display:inline-block;width:1.5px;height:1.05em;background:var(--ink);vertical-align:-.15em;margin:0 1px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .controls{display:flex;align-items:center;gap:12px;margin-top:14px}
+  .controls button{
+    font-family:inherit;border:1px solid #c9bfa9;background:#fffdf7;color:var(--ink);
+    border-radius:999px;height:34px;min-width:34px;padding:0 12px;cursor:pointer;font-size:14px
+  }
+  input[type=range]{flex:1;accent-color:#5a6380;height:28px}
+  .time{font-size:12px;color:#6d6658;min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+  .stats{font-size:12.5px;color:#6d6658;margin-top:8px;letter-spacing:.04em;line-height:1.9}
+  .stats em{font-style:normal;color:var(--ink);font-size:14px}
+  .unwritten{margin-top:14px;padding-top:12px;border-top:1px dashed #d6ccb7;opacity:0;transform:translateY(6px);transition:opacity 1.8s ease,transform 1.8s ease;min-height:62px}
+  .unwritten.show{opacity:1;transform:none}
+  .unwritten .label{font-size:11px;letter-spacing:.3em;color:#9a917e}
+  .unwritten .line{font-size:19px;color:#6f6a62;letter-spacing:.12em;margin-top:4px}
+  .actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .btn{
+    font-family:inherit;font-size:15px;letter-spacing:.12em;padding:10px 22px;border-radius:2px;cursor:pointer;
+    border:1px solid var(--ink);background:var(--ink);color:#fbf7ee;
+  }
+  .btn.ghostbtn{background:transparent;color:var(--ink);border-color:#bfb49d}
+  .btn:disabled{opacity:.35;cursor:default}
+  .btn.pulse{animation:pulse 2.2s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 6px rgba(35,42,61,.10)}}
+  .note{font-size:11.5px;color:#8a8170;margin-top:12px;width:min(760px,100%);text-align:center;letter-spacing:.05em}
+  .hidden{display:none !important}
+  .seal{
+    position:absolute;left:50%;top:50%;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#b8473f,#7e1f1b 70%);color:#f6e3d8;
+    display:flex;align-items:center;justify-content:center;font-size:34px;letter-spacing:0;
+    box-shadow:0 4px 14px rgba(90,20,15,.35), inset 0 0 0 6px rgba(255,255,255,.08);
+    opacity:0;transform:scale(1.8);pointer-events:none;z-index:5;
+  }
+  .seal.on{animation:stamp 1.5s ease forwards}
+  @keyframes stamp{0%{opacity:0;transform:scale(1.8)}25%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.96)}}
+  .wipe{transition:opacity .6s ease}
+  .wipe.out{opacity:0}
+  @media (max-width:560px){
+    :root{--fs:17px;--lh:38px}
+    .paper{padding:20px 18px}
+    header{flex-direction:column;gap:4px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ためらいの再生</h1>
+  <p>手紙は、書いた文字だけでできていない。</p>
+</header>
+
+<div class="paper" id="paper">
+  <div class="tag"><span id="tagL"><b>見本</b>　だれかの 1 通（架空）</span><span id="tagR">再生中</span></div>
+  <div class="prompt">ちゃんと言えていない “ありがとう” を、誰かに 3 行で。</div>
+
+  <div id="stage" class="lines wipe" aria-live="off"></div>
+  <textarea id="pad" class="lines hidden" rows="3" spellcheck="false" placeholder="ここに、3 行で。"></textarea>
+
+  <div id="ctl" class="controls">
+    <button id="play" aria-label="再生/一時停止">❚❚</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="時間">
+    <button id="speed" aria-label="速さ">×1</button>
+    <span class="time" id="time">0.0 / 0.0 秒</span>
+  </div>
+  <div class="stats" id="stats"></div>
+
+  <div class="unwritten" id="unwritten">
+    <div class="label">書かなかった手紙</div>
+    <div class="line" id="unwrittenLine"></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn ghostbtn" id="skip">見本をとばして書く</button>
+    <button class="btn hidden" id="yours">あなたも書いてみる</button>
+    <button class="btn hidden" id="sealBtn" disabled>封をする</button>
+    <button class="btn ghostbtn hidden" id="again">もう一度書く</button>
+  </div>
+  <div class="seal" id="seal">封</div>
+</div>
+<div class="note">書いたことばは、どこにも送らず、保存もしません。このページを閉じると消えます。</div>
+
+<script>
+(() => {
+  const TH = 1.2; // これ以上止まったら「ためらい」
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), pad = $('pad'), scrub = $('scrub'), playBtn = $('play'), speedBtn = $('speed');
+
+  // ---------- 見本（架空の誰かの 1 通） ----------
+  function buildSample(){
+    const ev = []; let text = []; let t = 0.5; let lastT = 0; let seed = 11;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const type = (s, sp = 0.16) => { for (const ch of s){ ev.push({t, k:'ins', pos:text.length, s:ch}); text.push(ch); lastT = t; t += sp*(0.6+rnd()*0.8) + (/[、。]/.test(ch) ? 0.28 : 0); } };
+    const wait = d => { t = lastT + d; };
+    const back = (n, sp = 0.11) => { for (let i=0;i<n;i++){ ev.push({t, k:'del', pos:text.length-1, n:1}); text.pop(); lastT = t; t += sp*(0.7+rnd()*0.6); } };
+    type('母さん、'); type('いつも'); wait(1.9); back(3);
+    type('毎年送ってくれる文旦、'); type('\n');
+    type('本当は'); wait(4.2); type('食べきれなくて'); wait(1.6); back(7);
+    type('職場で配ってる。みんな喜んでくれる。'); type('\n');
+    wait(2.6); type('ごめん'); wait(2.3); back(3);
+    type('ありがとう。今年の冬は、'); wait(3.6); type('帰るね。');
+    return ev;
+  }
+
+  // ---------- 再生の中身 ----------
+  function stateAt(T, evs, total){
+    const items = []; let lastT = 0, caret = 0;
+    const idxOf = p => { let a = 0; for (let i=0;i<items.length;i++){ const it = items[i]; if (it.k==='c' && it.alive){ if (a===p) return i; a++; } } return items.length; };
+    for (const ev of evs){
+      if (ev.t > T) break;
+      const gap = ev.t - lastT;
+      const at = ev.k === 'ins' ? ev.pos : ev.pos + ev.n;
+      if (gap >= TH) items.splice(idxOf(at), 0, {k:'p', d:gap});
+      if (ev.k === 'ins'){
+        const chars = Array.from(ev.s).map(ch => ({k:'c', ch, alive:true}));
+        items.splice(idxOf(ev.pos), 0, ...chars);
+        caret = ev.pos + chars.length;
+      } else {
+        for (let j=0;j<ev.n;j++){ const i = idxOf(ev.pos); if (i < items.length){ items[i].alive = false; items[i].dt = ev.t; } }
+        caret = ev.pos;
+      }
+      lastT = ev.t;
+    }
+    const ended = T >= total - 1e-6;
+    if (!ended && T - lastT >= TH) items.splice(idxOf(caret), 0, {k:'p', d:T-lastT, live:true});
+    if (!ended) items.splice(idxOf(caret), 0, {k:'caret'});
+    return items;
+  }
+
+  const esc = c => c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c;
+  function render(items, T){
+    let h = '', inGhost = false;
+    const close = () => { if (inGhost){ h += '</s>'; inGhost = false; } };
+    for (const it of items){
+      if (it.k === 'c'){
+        if (it.alive){ close(); h += it.ch === '\n' ? '<br>' : esc(it.ch); }
+        else {
+          const fresh = T - it.dt < 0.8;
+          if (!inGhost){ h += `<s class="ghost${fresh ? ' fresh' : ''}">`; inGhost = true; }
+          h += it.ch === '\n' ? '↵' : esc(it.ch);
+        }
+      } else if (it.k === 'p'){
+        close();
+        const d = it.d, s = Math.min(160, 20 + d*19), a = Math.min(.38, .08 + d*.06);
+        h += `<span class="pause"><i class="bleed" style="--s:${s}px;--a:${a}"></i><span>……<small>（${d.toFixed(1)} 秒）</small></span></span>`;
+      } else if (it.k === 'caret'){ close(); h += '<i class="caret"></i>'; }
+    }
+    close();
+    stage.innerHTML = h;
+  }
+
+  function summarize(evs){
+    const items = stateAt(Infinity, evs, -1);
+    let written = 0, erased = 0, pauses = [], runs = [], cur = '';
+    for (const it of items){
+      if (it.k === 'c'){
+        if (it.alive){ written += it.ch === '\n' ? 0 : 1; if (cur){ runs.push(cur); cur=''; } }
+        else { if (it.ch !== '\n'){ erased++; cur += it.ch; } }
+      } else if (it.k === 'p') pauses.push(it.d);
+    }
+    if (cur) runs.push(cur);
+    return {written, erased, pauses, runs};
+  }
+
+  // ---------- 再生器 ----------
+  let mode = 'sample', events = [], total = 1, T = 0, playing = false, speed = 1, summary = null, firstGap = 0;
+  let lastFrame = performance.now();
+
+  function load(evs, opts = {}){
+    events = evs; total = (evs.length ? evs[evs.length-1].t : 0) + 0.8; T = 0;
+    summary = summarize(evs); firstGap = evs.length ? evs[0].t : 0;
+    const s = summary;
+    const longest = s.pauses.length ? Math.max(...s.pauses) : 0;
+    $('stats').innerHTML =
+      `書いた <em>${s.written}</em> 字　消した <em>${s.erased}</em> 字　止まった <em>${s.pauses.length}</em> 回` +
+      (longest ? `（いちばん長く <em>${longest.toFixed(1)}</em> 秒）` : '') +
+      `　かかった時間 <em>${(total-0.8).toFixed(1)}</em> 秒` +
+      (opts.showStart && firstGap >= TH ? `　書き出すまで <em>${firstGap.toFixed(1)}</em> 秒` : '');
+    $('unwrittenLine').textContent = s.runs.length ? s.runs.join('　') : '消したことばは、ありませんでした。';
+    $('unwritten').classList.remove('show');
+    playing = true; playBtn.textContent = '❚❚';
+  }
+
+  function setT(v){
+    T = Math.max(0, Math.min(total, v));
+    scrub.value = Math.round(T/total*1000);
+    $('time').textContent = `${T.toFixed(1)} / ${total.toFixed(1)} 秒`;
+    render(stateAt(T, events, total), T);
+    $('unwritten').classList.toggle('show', T >= total - 1e-6);
+  }
+
+  function onEnd(){
+    playing = false; playBtn.textContent = '▶';
+    $('tagR').textContent = 'おわり';
+    if (mode === 'sample'){ $('skip').classList.add('hidden'); $('yours').classList.remove('hidden'); $('yours').classList.add('pulse'); }
+    else { $('again').classList.remove('hidden'); }
+  }
+
+  function tick(now){
+    const dt = Math.min(.1, (now - lastFrame)/1000); lastFrame = now;
+    if ((mode === 'sample' || mode === 'replay') && playing){
+      const before = T;
+      setT(T + dt*speed);
+      if (T >= total && before < total) onEnd();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  playBtn.onclick = () => {
+    if (!playing && T >= total) setT(0);
+    playing = !playing; playBtn.textContent = playing ? '❚❚' : '▶';
+    $('tagR').textContent = playing ? '再生中' : '止めています';
+  };
+  speedBtn.onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; speedBtn.textContent = '×' + speed; };
+  scrub.addEventListener('input', () => {
+    const wasEnd = T >= total;
+    setT(scrub.value/1000*total);
+    if (T < total){ $('tagR').textContent = playing ? '再生中' : '巻き戻し'; }
+    else if (!wasEnd) onEnd();
+  });
+
+  // ---------- 書くモード（記録） ----------
+  let rec = [], prev = [], t0 = null, composing = false;
+  function now(){ return (performance.now() - t0)/1000; }
+  function diffRecord(){
+    const cur = Array.from(pad.value);
+    if (t0 === null) t0 = performance.now();
+    let p = 0; while (p < prev.length && p < cur.length && prev[p] === cur[p]) p++;
+    let s = 0; while (s < prev.length - p && s < cur.length - p && prev[prev.length-1-s] === cur[cur.length-1-s]) s++;
+    const removed = prev.length - p - s, inserted = cur.slice(p, cur.length - s).join('');
+    const t = now();
+    if (removed > 0) rec.push({t, k:'del', pos:p, n:removed});
+    if (inserted) rec.push({t, k:'ins', pos:p, s:inserted});
+    prev = cur;
+    $('sealBtn').disabled = pad.value.trim().length === 0;
+  }
+  pad.addEventListener('focus', () => { if (t0 === null) t0 = performance.now(); });
+  pad.addEventListener('compositionstart', () => { composing = true; });
+  pad.addEventListener('compositionend', () => { composing = false; setTimeout(diffRecord, 0); });
+  pad.addEventListener('input', e => { if (e.isComposing || composing) return; diffRecord(); });
+  pad.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing && pad.value.split('\n').length >= 3) e.preventDefault();
+  });
+
+  function startWriting(){
+    mode = 'write'; playing = false;
+    rec = []; prev = []; t0 = null; pad.value = '';
+    $('tagL').innerHTML = '<b>あなたの 1 通</b>';
+    $('tagR').textContent = '書いているあいだの手の動きを、そっと記録しています';
+    stage.classList.add('hidden'); pad.classList.remove('hidden');
+    $('ctl').classList.add('hidden'); $('stats').classList.add('hidden'); $('unwritten').classList.remove('show');
+    ['skip','yours','again'].forEach(id => $(id).classList.add('hidden'));
+    $('yours').classList.remove('pulse');
+    $('sealBtn').classList.remove('hidden'); $('sealBtn').disabled = true;
+    setTimeout(() => pad.focus(), 50);
+  }
+
+  function seal(){
+    if (composing) diffRecord();
+    if (!rec.length) return;
+    mode = 'sealing';
+    $('sealBtn').classList.add('hidden');
+    pad.classList.add('wipe','out');
+    const sealEl = $('seal'); sealEl.classList.remove('on'); void sealEl.offsetWidth; sealEl.classList.add('on');
+    setTimeout(() => {
+      pad.classList.add('hidden'); pad.classList.remove('out');
+      pad.value = '';
+      stage.innerHTML = ''; stage.classList.remove('hidden');
+      $('tagR').textContent = '';
+    }, 650);
+    setTimeout(() => {
+      mode = 'replay';
+      $('tagL').innerHTML = '<b>あなたの 1 通</b>　書いた速さのまま';
+      $('tagR').textContent = '再生中';
+      $('ctl').classList.remove('hidden'); $('stats').classList.remove('hidden');
+      load(rec.slice(), {showStart:true}); setT(0);
+    }, 1600);
+  }
+
+  $('skip').onclick = startWriting;
+  $('yours').onclick = startWriting;
+  $('again').onclick = startWriting;
+  $('sealBtn').onclick = seal;
+
+  // 開いたらすぐ、見本がひとりでに書きはじめる
+  load(buildSample()); setT(0);
+  requestAnimationFrame(t => { lastFrame = t; requestAnimationFrame(tick); });
+
+  window.__hr = { get mode(){ return mode; }, get T(){ return T; }, get total(){ return total; }, get rec(){ return rec; }, setT };
+})();
+</script>
+</body>
+</html>

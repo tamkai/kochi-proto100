@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サービス利用規約｜カゲフミ</title>
+<style>
+  :root { --ink:#222; --sub:#777; --red:#9b1111; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: auto; }
+  body {
+    margin: 0; background: #fff; color: var(--ink);
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", "MS PMincho", serif;
+    font-size: 13px; line-height: 1.95; letter-spacing: .02em;
+  }
+  .doc { max-width: 720px; margin: 0 auto; padding: 48px 28px 120px; position: relative; }
+  .brand { font-size: 11px; color: var(--sub); letter-spacing: .2em; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+  h1 { font-size: 20px; font-weight: 600; text-align: center; margin: 36px 0 6px; letter-spacing: .3em; }
+  .meta { text-align: right; font-size: 11px; color: var(--sub); margin-bottom: 28px; }
+  .meta .mut { color: var(--red); }
+  .preamble { margin-bottom: 22px; text-indent: 1em; }
+  .art { margin: 0 0 18px; }
+  .art h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+  .art .body { text-indent: 1em; }
+  .art .body ol { margin: 2px 0 0; padding-left: 2.6em; text-indent: 0; }
+  .art.inserted { border-left: 2px solid var(--red); padding-left: 10px; animation: grow .6s ease-out; }
+  @keyframes grow { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 300px; } }
+  .mut { color: var(--red); }
+  .flash { animation: flash 2.2s ease-out; }
+  @keyframes flash { 0% { background: #ffe680; } 70% { background: rgba(255,230,128,.35); } 100% { background: transparent; } }
+  .note {
+    position: absolute; width: 240px; z-index: 5;
+    font-size: 11.5px; line-height: 1.7; color: var(--red);
+    border-left: 1px solid var(--red); padding: 2px 0 2px 10px; background: rgba(255,255,255,.94);
+    animation: fadein .4s ease-out;
+  }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .agree-zone { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 24px; min-height: 150px; position: relative; text-align: center; }
+  #agreeLabel {
+    display: inline-block; padding: 8px 14px; border: 1px solid #ccc; background: #fafafa; cursor: pointer;
+    transition: transform .16s ease-out; user-select: none;
+  }
+  #agreeLabel input { vertical-align: -2px; margin-right: 6px; }
+  .hint { font-size: 11px; color: var(--red); min-height: 1.6em; margin-top: 10px; }
+  #submit {
+    display: block; margin: 14px auto 0; font: inherit; font-size: 14px; padding: 10px 40px;
+    background: #2a3a5a; color: #fff; border: 0; cursor: pointer; letter-spacing: .15em;
+  }
+  #submit:disabled { background: #bbb; cursor: not-allowed; }
+  #result { margin-top: 32px; color: var(--red); display: none; }
+  #result h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: .1em; }
+  #result ul { margin: 0; padding-left: 1.4em; }
+  #result li { font-size: 12.5px; }
+  #result .final { margin-top: 18px; font-size: 14px; font-weight: 600; }
+  .foot { margin-top: 60px; font-size: 10.5px; color: #aaa; text-align: center; }
+  @media (max-width: 600px) {
+    .doc { padding: 28px 16px 100px; }
+    h1 { font-size: 17px; letter-spacing: .15em; }
+    .note { width: auto; left: 16px !important; right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="doc" id="doc">
+  <div class="brand">カゲフミ ／ 会員登録 ／ STEP 2 of 3</div>
+  <h1>サービス利用規約</h1>
+  <div class="meta">制定：2019年4月1日<br>最終改定：<span id="revised"></span></div>
+  <p class="preamble">本サービスをご利用いただく前に、以下の利用規約をよくお読みください。会員登録を完了された時点で、本規約のすべての条項に同意いただいたものとみなします。</p>
+  <div id="arts"></div>
+
+  <div class="agree-zone" id="zone">
+    <label id="agreeLabel"><input type="checkbox" id="agree">上記の利用規約を読み、内容に同意します</label>
+    <div class="hint" id="hint"></div>
+    <button id="submit" disabled>同意して登録へ進む</button>
+  </div>
+  <div id="result"></div>
+  <div class="foot">© カゲフミ運営事務局（架空のサービスです）</div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const T0 = Date.now();
+  const $ = (s) => document.querySelector(s);
+  const WD = '日月火水木金土';
+  const jpTime = (d, sec = true) => {
+    const h = d.getHours();
+    return `${h < 12 ? '午前' : '午後'}${h % 12}時${d.getMinutes()}分${sec ? d.getSeconds() + '秒' : ''}`;
+  };
+  const jpDate = (d) => `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`;
+  const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
+  const browser = (() => {
+    const u = navigator.userAgent;
+    if (/Edg\//.test(u)) return 'Edge';
+    if (/Firefox\//.test(u)) return 'Firefox';
+    if (/Chrome\//.test(u)) return 'Chrome';
+    if (/Safari\//.test(u)) return 'Safari';
+    return '何らかのブラウザ';
+  })();
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '不明'; } catch (e) { return '不明'; } })();
+
+  // ---------- 条文 ----------
+  const ARTS = [
+    ['目的', '本規約は、カゲフミ運営事務局（以下「当事務局」といいます。）が提供するオンラインサービス「カゲフミ」（以下「本サービス」といいます。）の利用条件を定めるものです。利用者は、本規約に同意したうえで本サービスを利用するものとします。<span id="a1">利用者は、本規約の全文を読み、その内容を理解したうえで同意するものとします。</span>'],
+    ['定義', '本規約において使用する用語の定義は、次の各号に定めるとおりとします。<ol><li>「利用者」とは、本規約に同意のうえ、本サービスを利用する個人をいいます。</li><li>「登録情報」とは、利用者が当事務局に届け出た氏名、連絡先その他の情報をいいます。</li><li>「コンテンツ」とは、文章、画像、音声その他の情報をいいます。</li><li>「端末」とは、利用者が本サービスを利用するために使用する電子計算機をいいます。</li></ol>'],
+    ['適用', '本規約は、利用者と当事務局との間の本サービスの利用に関わる一切の関係に適用されます。当事務局が本サービス上で掲載する個別規定は、本規約の一部を構成するものとします。本規約の内容と個別規定の内容が異なる場合には、個別規定において特段の定めなき限り、個別規定の定めが優先されるものとします。'],
+    ['利用登録', '本サービスの利用を希望する者は、本規約に同意のうえ、当事務局の定める方法によって利用登録を申請し、当事務局がこれを承認することによって、利用登録が完了するものとします。当事務局は、申請者が過去に本規約に違反したことがある者である場合、その他当事務局が利用登録を相当でないと判断した場合には、利用登録を承認しないことがあり、その理由については一切の開示義務を負わないものとします。'],
+    ['アカウントの管理', '利用者は、自己の責任において、本サービスのアカウント及びパスワードを適切に管理するものとします。利用者は、いかなる場合にも、アカウント及びパスワードを第三者に譲渡又は貸与し、もしくは第三者と共用することはできません。アカウントとパスワードの組み合わせが登録情報と一致してログインされた場合には、そのアカウントを登録している利用者自身による利用とみなします。'],
+    ['利用料金及び支払方法', '利用者は、本サービスの有料部分の対価として、当事務局が別途定め、本サービス上に表示する利用料金を、当事務局が指定する方法により支払うものとします。利用者が利用料金の支払を遅滞した場合には、利用者は年14.6％の割合による遅延損害金を支払うものとします。'],
+    ['利用環境', '利用者は、本サービスを利用するために必要な通信機器、ソフトウェアその他の環境を、自己の費用と責任において準備するものとします。<span id="a7"></span>'],
+    ['禁止事項', '利用者は、本サービスの利用にあたり、次の各号の行為をしてはなりません。<ol><li>法令又は公序良俗に違反する行為</li><li>犯罪行為に関連する行為</li><li>当事務局のサーバー又はネットワークの機能を破壊したり、妨害したりする行為</li><li>本サービスの運営を妨害するおそれのある行為</li><li>他の利用者に関する個人情報等を収集又は蓄積する行為</li><li>その他、当事務局が不適切と判断する行為</li></ol>'],
+    ['本サービスの提供の停止等', '当事務局は、本サービスにかかるシステムの保守点検又は更新を行う場合、地震、落雷、火災、停電又は天災などの不可抗力により本サービスの提供が困難となった場合、その他当事務局が本サービスの提供が困難と判断した場合には、利用者に事前に通知することなく、本サービスの全部又は一部の提供を停止又は中断することができるものとします。', true],
+    ['知的財産権', '本サービスにおいて当事務局が提供するコンテンツに関する著作権その他の知的財産権は、当事務局又は正当な権利者に帰属します。利用者は、当事務局の事前の書面による承諾なく、これらを複製、翻案、公衆送信その他の方法により利用してはならないものとします。'],
+    ['利用制限及び登録抹消', '当事務局は、利用者が本規約のいずれかの条項に違反した場合、登録事項に虚偽の事実があることが判明した場合、料金等の支払債務の不履行があった場合、当事務局からの連絡に対し一定期間返答がない場合には、事前の通知なく、利用者に対して本サービスの全部もしくは一部の利用を制限し、又は利用者としての登録を抹消することができるものとします。'],
+    ['反社会的勢力の排除', '利用者は、現在、暴力団、暴力団員、暴力団準構成員、総会屋等、社会運動等標ぼうゴロ又は特殊知能暴力集団等その他これらに準ずる者（以下「反社会的勢力」といいます。）に該当しないこと、及び将来にわたっても該当しないことを表明し、保証するものとします。', true],
+    ['保証の否認及び免責', '当事務局は、本サービスに事実上又は法律上の瑕疵（安全性、信頼性、正確性、完全性、有効性、特定の目的への適合性、セキュリティなどに関する欠陥、エラーやバグ、権利侵害などを含みます。）がないことを明示的にも黙示的にも保証しておりません。当事務局は、本サービスに起因して利用者に生じたあらゆる損害について、当事務局の故意又は重過失による場合を除き、一切の責任を負いません。'],
+    ['サービス内容の変更等', '当事務局は、利用者への事前の告知をもって、本サービスの内容を変更、追加又は廃止することがあり、利用者はこれを承諾するものとします。'],
+    ['個人情報の取扱い', '当事務局は、本サービスの利用によって取得する個人情報については、当事務局が別途定めるプライバシーポリシーに従い適切に取り扱うものとします。当事務局は、利用者の端末から送信される情報のうち、本サービスの提供に必要な範囲のものを取得することがあります。', true],
+    ['通知又は連絡', '利用者と当事務局との間の通知又は連絡は、当事務局の定める方法によって行うものとします。当事務局は、利用者から当事務局が別途定める方式に従った変更届け出がない限り、現在登録されている連絡先が有効なものとみなして当該連絡先へ通知又は連絡を行い、これらは発信時に利用者へ到達したものとみなします。'],
+    ['権利義務の譲渡の禁止', '利用者は、当事務局の書面による事前の承諾なく、利用契約上の地位又は本規約に基づく権利もしくは義務を第三者に譲渡し、又は担保に供することはできません。'],
+    ['分離可能性', '本規約のいずれかの条項又はその一部が、消費者契約法その他の法令等により無効又は執行不能と判断された場合であっても、本規約の残りの規定及び一部が無効又は執行不能と判断された規定の残りの部分は、継続して完全に効力を有するものとします。', true],
+    ['準拠法及び裁判管轄', '本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当事務局の本店所在地を管轄する裁判所を専属的合意管轄とします。'],
+  ];
+
+  const artsEl = $('#arts');
+  const state = []; // {el, no, title, read, need, mutated}
+  ARTS.forEach(([title, body, rewritable], i) => {
+    const sec = document.createElement('section');
+    sec.className = 'art';
+    sec.innerHTML = `<h3>第${i + 1}条（<span class="t">${title}</span>）</h3><div class="body">${body}</div>`;
+    artsEl.appendChild(sec);
+    state.push({ el: sec, label: `第${i + 1}条（${title}）`, seen: 0, rewritable: !!rewritable, mutated: false });
+  });
+  const charsOf = (s) => s.el.textContent.replace(/\s/g, '').length;
+  const needSec = (s) => charsOf(s) / 20 * 0.5; // 1秒20字で、その半分の時間は画面にあってほしい
+  const isRead = (s) => s.seen >= needSec(s);
+
+  // ---------- 改定日（変異のたびに更新） ----------
+  const revised = $('#revised');
+  revised.textContent = jpDate(new Date());
+  let mutations = 0;
+  function touched() {
+    mutations++;
+    const d = new Date();
+    revised.innerHTML = `<span class="mut">${jpDate(d)} ${jpTime(d)}（あなたの閲覧中に${mutations}回）</span>`;
+  }
+  function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+
+  // ---------- 異変1：3秒後、第1条があなたの時刻を書き込む ----------
+  let firstScrollAt = null;
+  const a1 = $('#a1');
+  function renderA1() {
+    const opened = new Date(T0);
+    const el = Math.floor((Date.now() - T0) / 1000);
+    const tail = firstScrollAt === null
+      ? `それから${el}秒が経過したが、利用者はまだ一度もスクロールしていない。`
+      : `利用者が最初にスクロールするまでに、${Math.round((firstScrollAt - T0) / 100) / 10}秒かかった。`;
+    a1.innerHTML = `利用者は、${jpDate(opened)}${jpTime(opened)}に本規約を開いた。${tail}`;
+  }
+  let a1Live = false;
+  setTimeout(() => {
+    a1.classList.add('mut'); renderA1(); flash(a1); touched(); a1Live = true;
+  }, 3000);
+  setInterval(() => { if (a1Live && firstScrollAt === null) renderA1(); }, 1000);
+
+  // ---------- 異変2：第7条があなたの環境を読み上げる ----------
+  const a7 = $('#a7');
+  let a7Done = false;
+  function renderA7() {
+    const d = new Date();
+    a7.innerHTML = `なお、利用者は、いま${WD[d.getDay()]}曜の${jpTime(d, false)}に、横<b>${window.innerWidth}</b>ピクセル・縦${window.innerHeight}ピクセルの窓で、${browser}を用い、言語設定「${navigator.language || '不明'}」、タイムゾーン「${tz}」のもとでこれを読んでいる。`;
+  }
+  window.addEventListener('resize', () => { if (a7Done) { renderA7(); flash(a7); } });
+
+  // ---------- タブの題・URL で話しかける ----------
+  const setTitle = (t) => { document.title = t; };
+  let curHash = '';
+  const setHash = (h) => { if (h === curHash) return; curHash = h; try { history.replaceState(null, '', '#' + h); } catch (e) {} };
+  setTimeout(() => { if (firstScrollAt === null) setTitle('（まだ第1条です）サービス利用規約'); }, 6500);
+  setTimeout(() => setHash('第1条を読んでいる'), 8000);
+
+  // ---------- スクロールの観察 ----------
+  let lastY = window.scrollY, totalPx = 0, burstStart = 0, burstSkipBase = 0, lastScrollT = 0;
+  let skippedChars = 0, lastRewriteAt = 0, rewrites = 0, lastRewriteTime = 0;
+  const passed = new Set();
+
+  const REWRITES = [
+    (x, y, n, px) => ['閲覧の速度', `利用者は、いま約${x}秒で${fmt(y)}字を読み飛ばした。これは1秒あたり約${fmt(y / Math.max(x, 0.5))}字であり、人が文章を読む速さのおよそ${Math.max(2, Math.round(y / Math.max(x, 0.5) / 10))}倍に相当する。当事務局は、これを「読んだ」とはみなさない。`],
+    (x, y, n, px) => ['通過', `利用者は、これまでに${n}の条文を読まずに通過した。その字数は合計${fmt(y)}字である。いまこの一文で手が止まったのであれば、本条はその目的を果たしている。`],
+    (x, y, n, px) => ['記録', `利用者がこの文書の上でスクロールした距離は、これまでに合計${fmt(px)}ピクセル、およそ${(px * 0.000264).toFixed(2)}メートルである。当事務局は、利用者が戻って読み直すことを求めない。ただ、知っている。`],
+    (x, y, n, px) => ['本条のみ', `ここまで読み飛ばしてきた利用者に告ぐ。本規約において真に重要なのは、本条のみであった。その内容は、利用者がこの一文を読み終えた時点で、すでに読み飛ばされている。`],
+  ];
+
+  function tryRewrite(now) {
+    if (skippedChars - lastRewriteAt < 450) return;
+    const vh = window.innerHeight;
+    const target = state.find((s) => s.rewritable && !s.mutated && s.el.getBoundingClientRect().top > vh + 40);
+    if (!target || rewrites >= REWRITES.length) return;
+    const x = Math.max(1, Math.round((now - burstStart) / 1000));
+    let y = skippedChars - burstSkipBase;
+    if (y < 400) y = skippedChars;
+    const n = state.filter((s) => passed.has(s) && !isRead(s)).length;
+    const [title, body] = REWRITES[rewrites](x, y, n, totalPx);
+    target.el.querySelector('.t').textContent = title;
+    target.el.querySelector('.t').classList.add('mut');
+    const b = target.el.querySelector('.body');
+    b.innerHTML = body; b.classList.add('mut');
+    target.mutated = true;
+    target.label = target.el.querySelector('h3').textContent;
+    rewrites++; lastRewriteAt = skippedChars; lastRewriteTime = now;
+    // 画面に入った瞬間に光らせる
+    target.flashPending = true;
+    touched();
+    setTitle('（読んでいませんね）サービス利用規約');
+    setHash('読んでいない');
+  }
+
+  window.addEventListener('scroll', () => {
+    const now = Date.now();
+    const y = window.scrollY;
+    totalPx += Math.abs(y - lastY); lastY = y;
+    if (firstScrollAt === null && totalPx > 4) { firstScrollAt = now; if (a1Live) { renderA1(); flash(a1); } setTitle('サービス利用規約｜カゲフミ'); }
+    if (now - lastScrollT > 1500) { burstStart = now; burstSkipBase = skippedChars; }
+    lastScrollT = now;
+    state.forEach((s) => {
+      if (!passed.has(s) && s.el.getBoundingClientRect().bottom < 0) {
+        passed.add(s);
+        if (!isRead(s)) skippedChars += charsOf(s);
+      }
+    });
+    tryRewrite(now);
+  }, { passive: true });
+
+  // 画面にある時間を数える（0.25秒刻み）
+  setInterval(() => {
+    const vh = window.innerHeight;
+    let current = null;
+    state.forEach((s) => {
+      const r = s.el.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < vh) {
+        s.seen += 0.25;
+        if (!current && r.top > -r.height / 2) current = s;
+        if (s.flashPending) { s.flashPending = false; flash(s.el); }
+      }
+    });
+    // 第7条：画面の中ほどに来たら書き込む
+    if (!a7Done) {
+      const r = state[6].el.getBoundingClientRect();
+      if (r.top < vh * 0.85 && Date.now() - T0 > 3500) { a7Done = true; a7.classList.add('mut'); renderA7(); flash(a7); touched(); }
+    }
+    if (Date.now() - T0 > 8000 && current && Date.now() - lastScrollT > 1200 && Date.now() - lastRewriteTime > 3000) {
+      const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 40;
+      setHash(atBottom ? '最後まで来た（読まずに）' : current.label.split('（')[0] + 'を読んでいる');
+    }
+  }, 250);
+
+  // ---------- 異変：閉じようとすると、条文が増える ----------
+  let exits = 0, lastExit = 0;
+  const EXIT_TEXT = [
+    () => ['存続', '閉じても、この規約は有効である。'],
+    (dt) => ['再度の存続', `利用者は、いま二度目に閉じようとした。前回から${dt}秒しか経っていない。前条の定めにより、それでも本規約は有効である。`],
+    () => ['確認', 'これで三度目である。当事務局は、利用者がまだここにいることを確認した。'],
+  ];
+  document.addEventListener('mouseout', (e) => {
+    if (e.relatedTarget || e.clientY > 8) return;
+    const now = Date.now();
+    if (now - lastExit < 1500 || exits >= EXIT_TEXT.length) return;
+    const dt = Math.max(1, Math.round((now - lastExit) / 1000));
+    lastExit = now;
+    // いま読んでいる位置の直後に「第N条の2」として差し込む
+    const vh = window.innerHeight;
+    let anchorIdx = state.findIndex((s) => s.el.getBoundingClientRect().bottom > vh * 0.35);
+    if (anchorIdx < 0) anchorIdx = state.length - 1;
+    const anchor = state[anchorIdx];
+    const baseNo = (anchor.label.match(/第(\d+)条/) || [, anchorIdx + 1])[1];
+    const [title, body] = EXIT_TEXT[exits](dt);
+    exits++;
+    const sec = document.createElement('section');
+    sec.className = 'art inserted';
+    sec.innerHTML = `<h3 class="mut">第${baseNo}条の${exits + 1}（${title}）</h3><div class="body mut">${body}</div>`;
+    let after = anchor.el;
+    while (after.nextElementSibling && after.nextElementSibling.classList.contains('inserted')) after = after.nextElementSibling;
+    after.after(sec);
+    const s = { el: sec, label: `第${baseNo}条の${exits + 1}（${title}）`, seen: 0, rewritable: false, mutated: true };
+    state.push(s);
+    state.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+    flash(sec); touched();
+    setTitle('閉じても有効です｜サービス利用規約');
+  });
+
+  // タブを離れる／戻る
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = Date.now(); setTitle('まだ同意していません'); }
+    else if (hiddenAt) { setTitle(`おかえりなさい（${Math.round((Date.now() - hiddenAt) / 1000)}秒の不在）`); }
+  });
+
+  // ---------- 選択すると注釈、コピーすると差し替え ----------
+  const doc = $('#doc');
+  let downAt = 0, note = null;
+  document.addEventListener('pointerdown', () => { downAt = Date.now(); });
+  function showNote(text, rect) {
+    if (note) note.remove();
+    note = document.createElement('div');
+    note.className = 'note';
+    const dr = doc.getBoundingClientRect();
+    const wide = window.innerWidth >= dr.width + 2 * 250;
+    const left = wide ? dr.width - 8 : Math.max(0, Math.min(rect.left - dr.left, dr.width - 260));
+    const top = wide ? rect.top - dr.top - 2 : rect.bottom - dr.top + 8;
+    note.style.left = left + 'px'; note.style.top = top + 'px';
+    note.textContent = text;
+    doc.appendChild(note);
+    touched();
+  }
+  let selCount = 0;
+  document.addEventListener('pointerup', () => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      const t = sel ? sel.toString().replace(/\s+/g, '') : '';
+      if (t.length < 2 || !sel.rangeCount) return;
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      const s = t.length > 24 ? t.slice(0, 24) + '…' : t;
+      const total = state.reduce((a, x) => a + charsOf(x), 0);
+      const ms = Math.max(1, Date.now() - downAt);
+      const msgs = [
+        `※「${s}」。利用者は、ここを選んだ。読んだ、ではなく、選んだ。`,
+        `※「${s}」を選ぶのに${fmt(ms)}ミリ秒かかった。当事務局は、そこに迷いがあったものと推定する。`,
+        `※この${t.length}字だけは、確かに読まれた。残る${fmt(total - t.length)}字について、本規約は沈黙する。`,
+        `※コピーしても構わない。ただし、貼り付けた先にも本規約はついていく。`,
+      ];
+      showNote(msgs[selCount++ % msgs.length], rect);
+    }, 10);
+  });
+  document.addEventListener('copy', (e) => {
+    const sel = window.getSelection();
+    const t = sel ? sel.toString().trim() : '';
+    const d = new Date();
+    e.clipboardData.setData('text/plain',
+      `あなたはいま、カゲフミ利用規約から「${t.slice(0, 40)}${t.length > 40 ? '…' : ''}」をコピーしたつもりでいる。\n` +
+      `実際にクリップボードに入ったのは、この文章である。\n` +
+      `（${jpDate(d)}${jpTime(d)}、横${window.innerWidth}ピクセルの窓にて記録）\n` +
+      `本規約は、貼り付けられた先においても有効である。`);
+    e.preventDefault();
+    if (sel && sel.rangeCount) showNote('※クリップボードの中身は、本規約が差し替えた。どこかに貼り付けて確かめてよい。', sel.getRangeAt(0).getBoundingClientRect());
+    setHash('コピーした');
+  });
+
+  // ---------- 同意チェックが逃げる ----------
+  const label = $('#agreeLabel'), box = $('#agree'), hint = $('#hint'), submit = $('#submit');
+  let escapes = 0, lastFlee = 0;
+  const unread = () => state.filter((s) => !isRead(s));
+  function flee(e) {
+    const n = unread().length;
+    const allowed = Math.min(6, Math.ceil(n / 3));
+    if (box.checked || escapes >= allowed) {
+      if (escapes > 0 && escapes >= allowed) hint.textContent = '……わかりました。';
+      return;
+    }
+    e.preventDefault();
+    if (Date.now() - lastFlee < 400) return;
+    lastFlee = Date.now();
+    escapes++;
+    const zw = label.parentElement.clientWidth;
+    const maxX = Math.max(40, (zw - label.offsetWidth) / 2);
+    const dx = (Math.random() < .5 ? -1 : 1) * (maxX * (.5 + Math.random() * .5));
+    const dy = (Math.random() < .5 ? -1 : 1) * (10 + Math.random() * 30);
+    label.style.transform = `translate(${dx}px, ${dy}px)`;
+    const hints = [
+      `まだ${n}の条文が読まれていない。`,
+      `チェックボックスは、読んでいない人の手から少しだけ逃げる。`,
+      `第${(unread()[0] || { label: '1' }).label.match(/\d+/)[0]}条から読み直しても、誰も責めない。`,
+      `逃げているのは、どちらだろう。`,
+      `あと少しで捕まえられる。`,
+      `それでも同意したいのですね。`,
+    ];
+    hint.textContent = hints[(escapes - 1) % hints.length];
+  }
+  label.addEventListener('pointerenter', flee);
+  label.addEventListener('pointerdown', flee);
+  label.addEventListener('click', (e) => {
+    const n = unread().length;
+    if (!box.checked && escapes < Math.min(6, Math.ceil(n / 3))) { e.preventDefault(); flee(e); }
+  });
+  box.addEventListener('change', () => { submit.disabled = !box.checked; });
+
+  // ---------- 同意すると、読まなかった条文の一覧 ----------
+  submit.addEventListener('click', () => {
+    const list = unread();
+    const res = $('#result');
+    const d = new Date();
+    const stay = Math.round((Date.now() - T0) / 1000);
+    const total = state.reduce((a, x) => a + charsOf(x), 0);
+    const readChars = state.filter(isRead).reduce((a, x) => a + charsOf(x), 0);
+    res.innerHTML = `<h2>あなたが読まなかった条文（${list.length} / ${state.length}）</h2>` +
+      (list.length ? `<ul>${list.map((s) => `<li>${s.label}　— 画面にあったのは${s.seen.toFixed(1)}秒</li>`).join('')}</ul>` : '<p>ありません。本当に、全部読んだのですね。</p>') +
+      `<p>滞在${stay}秒。全${fmt(total)}字のうち、読んだと推定できるのは${fmt(readChars)}字。</p>` +
+      `<p class="final">読まなかったことも含めて、${jpDate(d)}${jpTime(d)}、同意は成立した。</p>`;
+    res.style.display = 'block';
+    submit.disabled = true; box.disabled = true;
+    submit.textContent = '同意済み';
+    setTitle('同意済み（読まずに）');
+    setHash('同意済み');
+    res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+})();
+</script>
+</body>
+</html>

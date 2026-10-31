@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>窓から窓へ回覧板</title>
+<style>
+  :root { --wall:#f3ead8; --ink:#3b2f22; --red:#c8322b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; }
+  body {
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    color:var(--ink); background:var(--wall);
+    background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.03) 0 2px,transparent 2px 46px);
+    user-select:none;
+  }
+  #plate {
+    position:absolute; top:22px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(#b98a55,#94673a); color:#fff8ea;
+    padding:10px 26px 12px; border-radius:6px; text-align:center;
+    box-shadow:0 4px 0 #6d4a28,0 8px 18px rgba(0,0,0,.18); white-space:nowrap;
+  }
+  #plate small { display:block; font-size:12px; opacity:.85; letter-spacing:.2em; }
+  #plate b { font-size:30px; letter-spacing:.08em; }
+  #status { position:absolute; top:112px; left:0; right:0; text-align:center; font-size:14px; opacity:.8; }
+  #solo {
+    position:absolute; left:50%; bottom:150px; transform:translateX(-50%);
+    text-align:center; display:none; z-index:5;
+  }
+  #solo p { margin:0 0 8px; font-size:15px; background:#fff8; padding:4px 10px; border-radius:6px; }
+  button {
+    font:inherit; cursor:pointer; border:0; border-radius:8px; padding:10px 18px;
+    background:#3f7d4f; color:#fff; font-size:16px; box-shadow:0 3px 0 #2a5535;
+  }
+  button:active { transform:translateY(2px); box-shadow:0 1px 0 #2a5535; }
+  /* 町内マップ */
+  #map {
+    position:absolute; left:0; right:0; bottom:0; height:120px;
+    background:#cfe0b8; border-top:3px solid #9fb884; padding:8px 12px;
+    display:flex; gap:10px; align-items:flex-end; overflow:hidden;
+  }
+  #map .label { position:absolute; top:4px; left:10px; font-size:11px; opacity:.7; }
+  .hs { width:76px; text-align:center; font-size:11px; transition:opacity .8s, transform .8s; position:relative; }
+  .hs .roof { width:0; height:0; margin:0 auto; border-left:30px solid transparent; border-right:30px solid transparent; border-bottom:20px solid #a8483a; }
+  .hs .body { width:48px; height:30px; margin:0 auto; background:#fff6e2; border:2px solid #7a5a3a; border-top:0; position:relative; }
+  .hs .body::after { content:""; position:absolute; left:17px; bottom:0; width:12px; height:16px; background:#7a5a3a; }
+  .hs.me .roof { border-bottom-color:#3f7d4f; }
+  .hs.me .name { font-weight:bold; }
+  .hs.vacant { opacity:.35; filter:grayscale(1); transform:translateY(10px); }
+  .hs .tag { position:absolute; top:-6px; left:50%; transform:translateX(-50%); background:var(--red); color:#fff; font-size:10px; padding:1px 5px; border-radius:4px; white-space:nowrap; }
+  #sky { position:absolute; right:10px; bottom:128px; background:#fffc; border:1px solid #0002; border-radius:6px; padding:4px; font-size:10px; }
+  #sky canvas { display:block; }
+  #coords { font-family:Menlo,monospace; font-size:10px; opacity:.7; margin-top:2px; }
+  /* 回覧板 */
+  #board {
+    position:fixed; left:0; top:0; width:250px; height:330px; z-index:10; cursor:pointer; display:none;
+    will-change:transform;
+  }
+  #board .bind {
+    position:absolute; inset:0; background:#2f5d8a; border-radius:10px;
+    box-shadow:0 10px 24px rgba(0,0,0,.28), inset 0 0 0 3px #244a70;
+  }
+  #board .clip {
+    position:absolute; top:-10px; left:50%; transform:translateX(-50%); width:90px; height:28px;
+    background:linear-gradient(#e8e8e8,#9a9a9a); border-radius:6px 6px 3px 3px; box-shadow:0 2px 3px #0005; z-index:2;
+  }
+  #board .paper {
+    position:absolute; top:12px; left:12px; right:12px; bottom:12px; background:#fffdf6;
+    border-radius:3px; padding:22px 12px 8px; font-size:11px; line-height:1.45; overflow:hidden;
+  }
+  .paper h3 { margin:0; font-size:17px; text-align:center; letter-spacing:.5em; }
+  .paper .sub { text-align:center; font-size:10.5px; border-bottom:1px dashed #0004; padding-bottom:4px; margin-bottom:5px; }
+  #stamps { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:5px; }
+  .cell { width:38px; height:40px; border:1px solid #0005; position:relative; font-size:7.5px; text-align:center; overflow:visible; }
+  .cell .n { border-bottom:1px solid #0003; white-space:nowrap; overflow:hidden; }
+  .stamp {
+    position:absolute; left:8px; top:13px; width:23px; height:23px; border:2px solid var(--red); border-radius:50%;
+    color:var(--red); font-size:8px; line-height:9px; display:flex; align-items:center; justify-content:center; font-weight:bold;
+    opacity:.85; background:#fff0;
+  }
+  .stamp.new { animation:thump .45s ease-out; }
+  @keyframes thump { 0%{transform:scale(2.6) rotate(var(--r));opacity:0} 60%{transform:scale(.9) rotate(var(--r));opacity:1} 100%{transform:scale(1) rotate(var(--r))} }
+  #notes { border-top:1px solid #0002; padding-top:3px; }
+  .note { padding:2px 0; border-bottom:1px dotted #0002; }
+  .note b { color:#5a3d1e; }
+  .note.me b { color:#3f7d4f; }
+  .note.new { animation:fadein .6s; background:#fff3b0; }
+  @keyframes fadein { from{opacity:0;transform:translateX(-6px)} to{opacity:1} }
+  #hint { position:absolute; bottom:-24px; left:0; right:0; text-align:center; font-size:12px; color:#3f7d4f; display:none; }
+  /* トースト */
+  #toast {
+    position:fixed; top:150px; left:50%; transform:translateX(-50%) translateY(-10px); opacity:0;
+    background:#3b2f22; color:#fff; padding:8px 16px; border-radius:20px; font-size:14px; transition:.3s; z-index:20; white-space:nowrap;
+  }
+  #toast.on { opacity:1; transform:translateX(-50%); }
+  /* 書き込み */
+  #modal { position:fixed; inset:0; background:#0006; display:none; align-items:center; justify-content:center; z-index:30; }
+  #modal .box { background:#fffdf6; padding:18px; border-radius:10px; width:320px; }
+  #modal textarea { width:100%; height:70px; font:inherit; font-size:15px; margin:8px 0; }
+  #modal .row { display:flex; gap:8px; justify-content:flex-end; }
+  #modal .cancel { background:#888; box-shadow:0 3px 0 #555; }
+</style>
+</head>
+<body>
+<div id="plate"><small>ひだまり町内会</small><b id="hname">引っ越し中…</b></div>
+<div id="status">ご近所を探しています…</div>
+<div id="solo">
+  <p>この町内にはまだあなたの家しかありません</p>
+  <button id="build">隣の家を建てる</button>
+</div>
+<div id="sky">上空から見た町内<canvas id="skyc" width="170" height="90"></canvas><div id="coords"></div></div>
+<div id="map"><span class="label">町内マップ</span></div>
+<div id="board">
+  <div class="bind"></div><div class="clip"></div>
+  <div class="paper">
+    <h3>回覧</h3>
+    <div class="sub">秋の一斉清掃のお知らせ（日曜 朝8時・公園集合）</div>
+    <div id="stamps"></div>
+    <div id="notes"></div>
+  </div>
+  <div id="hint">クリックで一言書き込めます</div>
+</div>
+<div id="toast"></div>
+<div id="modal"><div class="box">
+  <b>回覧板に一言</b>
+  <textarea id="msg" maxlength="40" placeholder="例: 清掃、参加します"></textarea>
+  <div class="row"><button class="cancel" id="cancel">やめる</button><button id="send">書いて次の家へ回す</button></div>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+// ---------- 家と住人（すべて架空） ----------
+const HOUSES = [
+  { name:'102号室',   who:'几帳面',  own:['日付の書き方を統一してください','付箋は剥がしてから回してください'] },
+  { name:'角の家',     who:'会長',    own:['会長として申し上げますが','清掃は雨天決行です（たぶん）'] },
+  { name:'2階の部屋', who:'夜型',    own:['夜中に回ってきたので朝読みます','（深夜3時に拝見）'] },
+  { name:'犬のいる家', who:'犬',      own:['わん（ハンコは肉球で押しました）','わんわん（代筆：飼い主）'] },
+  { name:'空き地の隣', who:'のんき',  own:['空き地に何ができるか知ってる人？','清掃の後、空き地で焼き芋します'] },
+  { name:'新築の家',   who:'新人',    own:['越してきました、よろしくお願いします！','回覧板って本当に回るんですね'] },
+  { name:'坂の上の家', who:'遠い',    own:['坂の上まで持ってきてくれて感謝','次は坂の下からお願いします'] },
+  { name:'大家さん宅', who:'大家',    own:['ハンコは実印でなくて大丈夫です','家賃の話はここでしないでください'] },
+];
+const LV = [
+  ['拝見しました。','清掃、参加します。','いつもお世話になっております。','軍手は各自持参ですね。'],
+  ['ハンコは枠の中に押してください','回すの、もう少し早くお願いします','字が小さくて読めません','読みました（読んでません）'],
+  ['前の人のぼやき、長くないですか','回覧板は私物ではありません','この欄、清掃の話をする所では？','ハンコの向きが逆の方がいます'],
+  ['この回覧板、そろそろ議事録では？','ハンコ欄が足りないので余白に押しました','次の総会の議題が決まりました','もう個別に話してください'],
+];
+const RETORT = [
+  ['了解です。','ありがとうございます。'],
+  ['承知しました（承知していません）','それ前回も書いてありました','字がきれいですね（皮肉ではない）'],
+  ['それ、回覧板に書くことですか','言い方に気をつけてください','町内会で議題にします'],
+  ['次の総会で話しましょう','もう個別に話してください','記録しました（会長が）'],
+];
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const cut = (s,n) => s.length>n ? s.slice(0,n)+'…' : s;
+
+// ---------- 通信（BroadcastChannel ＋ localStorage） ----------
+const me = { id: Math.random().toString(36).slice(2,9), join: Date.now()+Math.random(), name:null };
+const houses = new Map();   // id -> info
+const vacant = new Map();   // name -> 時刻
+const seen = new Set();
+let bc = null;
+try { bc = new BroadcastChannel('kairan-v1'); bc.onmessage = e => recv(e.data); } catch (e) { bc = null; }
+window.addEventListener('storage', e => {
+  if (e.key === 'kairan-msg' && e.newValue) { try { recv(JSON.parse(e.newValue)); } catch (_) {} }
+});
+function send(m) {
+  m.mid = me.id + Math.random().toString(36).slice(2,8);
+  m.from = me.id;
+  if (bc) try { bc.postMessage(m); } catch (_) {}
+  try { localStorage.setItem('kairan-msg', JSON.stringify(m)); } catch (_) {}
+}
+function recv(m) {
+  if (!m || m.from === me.id || seen.has(m.mid)) return;
+  seen.add(m.mid); if (seen.size > 500) seen.clear();
+  if (m.type === 'hello') {
+    const isNew = !houses.has(m.info.id);
+    houses.set(m.info.id, Object.assign(m.info, { seen: Date.now() }));
+    if (m.info.name) vacant.delete(m.info.name);
+    if (isNew) hello();
+    if (me.name && m.info.name === me.name && (m.info.join < me.join)) { me.name = null; assignName(); }
+    renderMap();
+  } else if (m.type === 'bye') {
+    leave(m.id);
+  } else if (m.type === 'board') {
+    if (!board || m.board.v > board.v) adoptBoard(m.board);
+  } else if (m.type === 'who') {
+    hello(); if (board) send({ type:'board', board });
+  }
+}
+function info() {
+  return { id:me.id, name:me.name, join:me.join, sx:screenX, sy:screenY,
+           ow:outerWidth, oh:outerHeight, iw:innerWidth, ih:innerHeight };
+}
+let lastHello = 0;
+function hello() { lastHello = Date.now(); send({ type:'hello', info:info() }); }
+function leave(id) {
+  const h = houses.get(id); if (!h) return;
+  houses.delete(id);
+  if (h.name) { vacant.set(h.name, Date.now()); toast(`${h.name} が空き家になりました`); }
+  renderMap();
+}
+window.addEventListener('pagehide', () => send({ type:'bye', id:me.id }));
+
+function alive() {
+  const list = [info(), ...houses.values()].filter(h => h.name);
+  return list.sort((a,b) => a.join - b.join);
+}
+function assignName() {
+  const used = new Set([...houses.values()].map(h => h.name));
+  const h = HOUSES.find(h => !used.has(h.name));
+  me.name = h ? h.name : `${used.size+1}軒目`;
+  document.getElementById('hname').textContent = me.name;
+  document.title = `${me.name} ― 窓から窓へ回覧板`;
+  hello(); renderMap();
+}
+const persona = n => HOUSES.find(h => h.name === n) || { name:n, who:'住人', own:['拝見しました。'] };
+
+// ---------- 画面全体の座標 ----------
+function origin(h) { return { x: h.sx + Math.max(0,(h.ow-h.iw)/2), y: h.sy + Math.max(0,h.oh-h.ih) }; }
+function restLocal(h) { return { x: h.iw/2, y: Math.min(h.ih*0.52, h.ih-300) + 20 }; }
+function restScreen(h) { const o = origin(h), r = restLocal(h); return { x:o.x+r.x, y:o.y+r.y }; }
+function rect(h) { const o = origin(h); return { x:o.x, y:o.y, w:h.iw, h:h.ih }; }
+function overlaps(a, b) {
+  const A = rect(a), B = rect(b);
+  const ix = Math.max(0, Math.min(A.x+A.w, B.x+B.w) - Math.max(A.x, B.x));
+  const iy = Math.max(0, Math.min(A.y+A.h, B.y+B.h) - Math.max(A.y, B.y));
+  return ix*iy > 0.3 * Math.min(A.w*A.h, B.w*B.h);
+}
+const getH = id => id === me.id ? info() : houses.get(id);
+
+// ---------- 回覧板の状態 ----------
+let board = null, arrivedAt = 0, nextSolo = 0, solo = null, modalOpen = false, lastStampKey = '', lastNotes = 0;
+function newBoard() {
+  return { v: Date.now(), holder: me.id, arrived: true, transit: null, passes: 0, stamps: {}, roster: [],
+           notes: [{ h:'町内会', t:'順番に回してください。ハンコをお願いします。' }], gomi: 0, laps: 0, offPrev: false };
+}
+function commit() {
+  board.v++;
+  try { localStorage.setItem('kairan-board', JSON.stringify(board)); } catch (_) {}
+  send({ type:'board', board });
+  renderBoard();
+}
+function adoptBoard(b) {
+  const wasMine = board && board.holder === me.id && board.arrived;
+  board = b; renderBoard();
+  if (board.holder === me.id && board.arrived && !wasMine) arrivedAt = Date.now();
+}
+
+function stampMine() {
+  if (!board.roster.includes(me.name)) board.roster.push(me.name);
+  const lvl = level();
+  const off = lvl >= 1 && Math.random() < 0.25 + lvl*0.12;
+  board.stamps[me.name] = { r: Math.round(Math.random()*50-25), dx: off ? (Math.random()<.5?-1:1)*(14+Math.random()*10) : Math.random()*4-2,
+                            dy: off ? 12+Math.random()*8 : Math.random()*4-2, off, at: Date.now() };
+  return off;
+}
+const level = () => Math.min(3, Math.floor(board.passes / 3));
+function grumble() {
+  const p = persona(me.name), lvl = level();
+  const prev = [...board.notes].reverse().find(n => n.h !== me.name && n.h !== '町内会');
+  const recent = board.notes.slice(-4).map(n => n.t);
+  let t = '';
+  for (let i = 0; i < 6; i++) {
+    const r = Math.random();
+    if (board.offPrev && r < 0.5) t = 'ハンコは枠の中に押してください';
+    else if (prev && lvl >= 1 && r < 0.55) t = `${prev.h}さんの「${cut(prev.t, 12)}」、${pick(RETORT[lvl])}`;
+    else if (r < 0.72) { const n = board.gomi + 1; t = n === 1 ? 'ゴミの日は火曜です。' : `ゴミの日は火曜です（${n}回目）`; }
+    else if (r < 0.86) t = pick(p.own);
+    else t = pick(LV[lvl]);
+    if (!recent.includes(t)) break;
+  }
+  if (t.startsWith('ゴミの日')) board.gomi++;
+  return t;
+}
+function addNote(h, t, mine) {
+  board.notes.push({ h, t, me: !!mine, at: Date.now() });
+  if (board.notes.length > 30) board.notes.shift();
+}
+function arrive() {
+  board.arrived = true; board.transit = null; board.passes++;
+  const off = stampMine(); commit(); arrivedAt = Date.now();
+  toast(board.passes > 1 ? '回覧板が届きました' : '回覧板が来ました');
+  const v = board.v;
+  setTimeout(() => {
+    if (!board || board.holder !== me.id || board.v !== v) return;
+    addNote(me.name, grumble()); board.offPrev = off; commit();
+  }, 900);
+}
+function passOn() {
+  const list = alive(); if (list.length < 2) return;
+  const i = list.findIndex(h => h.id === me.id);
+  const to = list[(i+1) % list.length];
+  const a = info();
+  const screenMode = !overlaps(a, to);
+  let dur = 1700;
+  if (screenMode) { const s = restScreen(a), e = restScreen(to); dur = Math.max(1400, Math.min(3200, Math.hypot(e.x-s.x, e.y-s.y) / 0.55)); }
+  board.transit = { from: me.id, to: to.id, t0: Date.now()+40, dur, mode: screenMode ? 'screen' : 'warp' };
+  board.holder = to.id; board.arrived = false;
+  commit();
+}
+
+// ---------- 1軒だけの時 ----------
+function soloLap() {
+  solo = { t0: Date.now(), dur: 3600, said: false };
+}
+function soloEnd() {
+  solo = null; board.laps++;
+  toast('次の家が見つかりません…');
+  addNote(me.name, board.laps === 1 ? '町内を一周してきました。誰もいません。' : `また戻ってきました（${board.laps}周目）`);
+  if (board.laps === 1) stampMine();
+  commit();
+  nextSolo = Date.now() + 6500;
+}
+
+// ---------- 定期処理 ----------
+let ready = false;
+function tick() {
+  const now = Date.now();
+  if (now - lastHello > 400) hello();
+  for (const [id, h] of houses) if (now - h.seen > 3500) leave(id);
+  for (const [n, t] of vacant) if (now - t > 4000) { vacant.delete(n); renderMap(); }
+  if (!ready || !board) return;
+  const list = alive(), others = list.length - 1;
+  document.getElementById('solo').style.display = others === 0 ? 'block' : 'none';
+  // 持ち主が空き家になったら、いちばん古い家が回収
+  if (board.holder !== me.id && !houses.has(board.holder) && list[0] && list[0].id === me.id) {
+    board.holder = me.id; board.arrived = true; board.transit = null;
+    addNote(me.name, '（空き家の前に置いてあったので回収しました）'); commit(); arrivedAt = now;
+  }
+  if (board.holder === me.id && board.transit && !board.arrived && now >= board.transit.t0 + board.transit.dur) arrive();
+  if (board.holder === me.id && board.arrived && !modalOpen) {
+    if (others > 0 && !solo) { if (now - arrivedAt > 4200) passOn(); }
+    else if (others === 0 && !solo && now >= nextSolo) soloLap();
+  }
+  const where = board.transit ? `回覧板は ${(getH(board.transit.to)||{}).name || '…'} へ移動中` :
+    board.holder === me.id ? '回覧板があなたの家にあります' : `回覧板は ${(getH(board.holder)||{}).name || '…'} にあります`;
+  document.getElementById('status').textContent = `${where} ／ ${board.passes}回 回りました`;
+}
+
+// ---------- 描画 ----------
+const $b = document.getElementById('board');
+const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+let boardScreen = null, lastPos = '';
+function frame() {
+  requestAnimationFrame(frame);
+  const now = Date.now(), my = info();
+  const pk = `${my.sx},${my.sy},${my.iw},${my.ih}`;
+  if (pk !== lastPos && now - lastHello > 50) { lastPos = pk; hello(); }
+  let pos = null, rot = 0;
+  if (board) {
+    const T = board.transit;
+    if (T) {
+      const p = Math.min(1, Math.max(0, (now - T.t0) / T.dur));
+      const A = getH(T.from), B = getH(T.to);
+      if (T.mode === 'screen' && A && B) {
+        const s = restScreen(A), e = restScreen(B), o = origin(my), q = ease(p);
+        const sx = s.x + (e.x-s.x)*q, sy = s.y + (e.y-s.y)*q - Math.sin(Math.PI*p)*90;
+        boardScreen = { x:sx, y:sy };
+        pos = { x: sx - o.x, y: sy - o.y }; rot = Math.sin(p*Math.PI*2)*8;
+      } else {
+        const r = restLocal(my);
+        if (T.from === me.id && p < .5) pos = { x: r.x + (my.iw/2+260) * Math.pow(p*2, 2), y: r.y };
+        else if (T.to === me.id && p >= .5) pos = { x: -260 + (r.x+260) * (1 - Math.pow(1-(p-.5)*2, 2)), y: r.y };
+        rot = 6; boardScreen = null;
+      }
+      if (p >= 1 && T.to === me.id) { pos = restLocal(my); rot = 0; }
+    } else if (board.holder === me.id) {
+      const r = restLocal(my);
+      if (solo) {
+        const p = (now - solo.t0) / solo.dur;
+        if (p >= 1) { soloEnd(); pos = r; }
+        else if (p < .4) pos = { x: r.x + (my.iw/2+260)*Math.pow(p/.4,2), y: r.y };
+        else if (p < .6) { pos = null; if (!solo.said) { solo.said = true; toast('隣の家を探しています…'); } }
+        else pos = { x: -260 + (r.x+260)*(1-Math.pow(1-(p-.6)/.4,2)), y: r.y };
+        rot = 5;
+      } else { pos = r; rot = Math.sin(now/700)*1.5; }
+      const o = origin(my); if (pos) boardScreen = { x: pos.x+o.x, y: pos.y+o.y };
+    } else boardScreen = null;
+  }
+  if (pos) {
+    $b.style.display = 'block';
+    $b.style.transform = `translate(${pos.x-125}px,${pos.y-165}px) rotate(${rot}deg)`;
+  } else $b.style.display = 'none';
+  const here = board && board.holder === me.id && board.arrived && !solo && !board.transit;
+  document.getElementById('hint').style.display = here ? 'block' : 'none';
+  drawSky();
+}
+function renderBoard() {
+  if (!board) return;
+  const s = document.getElementById('stamps');
+  const names = [...board.roster];
+  const key = JSON.stringify(board.stamps);
+  if (key !== lastStampKey) {
+    lastStampKey = key;
+    s.innerHTML = names.slice(-10).map(n => {
+      const st = board.stamps[n];
+      const fresh = st && Date.now() - st.at < 1500;
+      const stamp = st ? `<div class="stamp${fresh?' new':''}" style="--r:${st.r}deg;transform:translate(${st.dx}px,${st.dy}px) rotate(${st.r}deg)">${n.slice(0,2)}<br>${n.slice(2,4)}</div>` : '';
+      return `<div class="cell"><div class="n">${esc(n)}</div>${stamp}</div>`;
+    }).join('');
+  }
+  const notes = board.notes.slice(-5);
+  const fresh = board.notes.length !== lastNotes; lastNotes = board.notes.length;
+  document.getElementById('notes').innerHTML = notes.map((n,i) =>
+    `<div class="note${n.me?' me':''}${fresh && i===notes.length-1?' new':''}"><b>${esc(n.h)}:</b> ${esc(n.t)}</div>`).join('');
+  renderMap();
+}
+function renderMap() {
+  const m = document.getElementById('map');
+  const list = alive();
+  const holder = board && (board.transit ? board.transit.to : board.holder);
+  let html = '<span class="label">町内マップ（開いた順）</span>';
+  for (const h of list) {
+    const tag = h.id === holder ? `<span class="tag">${board.transit ? '回覧板が向かってる' : '回覧板あり'}</span>` : '';
+    html += `<div class="hs${h.id===me.id?' me':''}">${tag}<div class="roof"></div><div class="body"></div><div class="name">${esc(h.name)}${h.id===me.id?'<br>(あなた)':''}</div></div>`;
+  }
+  for (const n of vacant.keys()) html += `<div class="hs vacant"><div class="roof"></div><div class="body"></div><div class="name">${esc(n)}<br>空き家</div></div>`;
+  if (m.innerHTML !== html) m.innerHTML = html;
+}
+const sky = document.getElementById('skyc').getContext('2d');
+function drawSky() {
+  const list = alive(); const W = 170, H = 90;
+  sky.clearRect(0,0,W,H);
+  if (!list.length) return;
+  const rs = list.map(rect);
+  let x0 = Math.min(...rs.map(r=>r.x)), y0 = Math.min(...rs.map(r=>r.y));
+  let x1 = Math.max(...rs.map(r=>r.x+r.w)), y1 = Math.max(...rs.map(r=>r.y+r.h));
+  const sc = Math.min((W-8)/(x1-x0||1), (H-8)/(y1-y0||1));
+  const ox = (W - (x1-x0)*sc)/2, oy = (H - (y1-y0)*sc)/2;
+  list.forEach((h,i) => {
+    const r = rs[i];
+    sky.fillStyle = h.id === me.id ? 'rgba(63,125,79,.25)' : 'rgba(168,72,58,.15)';
+    sky.strokeStyle = h.id === me.id ? '#3f7d4f' : '#a8483a';
+    const X = ox+(r.x-x0)*sc, Y = oy+(r.y-y0)*sc;
+    sky.fillRect(X, Y, r.w*sc, r.h*sc); sky.strokeRect(X+.5, Y+.5, r.w*sc-1, r.h*sc-1);
+    sky.fillStyle = '#3b2f22'; sky.font = '9px sans-serif'; sky.fillText(h.name, X+3, Y+11);
+  });
+  if (boardScreen) {
+    sky.fillStyle = '#2f5d8a';
+    sky.fillRect(ox+(boardScreen.x-x0)*sc-3, oy+(boardScreen.y-y0)*sc-4, 6, 8);
+  }
+  document.getElementById('coords').textContent = boardScreen
+    ? `回覧板の画面座標 (${Math.round(boardScreen.x)}, ${Math.round(boardScreen.y)})`
+    : `この家 screenX ${screenX} / screenY ${screenY}`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT = 0;
+function toast(t) {
+  const el = document.getElementById('toast'); el.textContent = t; el.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200);
+}
+
+// ---------- 操作 ----------
+$b.addEventListener('click', () => {
+  if (!board) return;
+  if (!(board.holder === me.id && board.arrived && !board.transit && !solo)) { toast('回覧中は書き込めません'); return; }
+  modalOpen = true;
+  document.getElementById('modal').style.display = 'flex';
+  document.getElementById('send').textContent = alive().length > 1 ? '書いて次の家へ回す' : '書いて回す（誰もいないけど）';
+  const ta = document.getElementById('msg'); ta.value = ''; ta.focus();
+});
+function closeModal() { modalOpen = false; document.getElementById('modal').style.display = 'none'; }
+document.getElementById('cancel').onclick = () => { closeModal(); arrivedAt = Date.now() - 2000; };
+document.getElementById('send').onclick = () => {
+  const t = document.getElementById('msg').value.trim();
+  closeModal();
+  if (!t || !board || board.holder !== me.id) return;
+  addNote(me.name, cut(t, 40), true); commit();
+  if (alive().length > 1) setTimeout(() => { if (board.holder === me.id && board.arrived) passOn(); }, 700);
+  else { nextSolo = Date.now() + 600; }
+};
+document.getElementById('msg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); document.getElementById('send').click(); } });
+document.getElementById('build').onclick = () => {
+  const w = outerWidth, h = outerHeight;
+  const left = screenX + w + 8 + Math.random()*10, top = screenY + 20;
+  const win = window.open(location.href, '_blank', `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+  if (!win) toast('ポップアップが止められました。同じページをもう1つ開いてください');
+};
+
+// ---------- 起動 ----------
+hello(); send({ type:'who' });
+setTimeout(() => {
+  assignName();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('kairan-board') || 'null'); } catch (_) {}
+  if (!board && saved && houses.has(saved.holder)) adoptBoard(saved);
+  if (!board) { board = newBoard(); board.roster.push(me.name); stampMine(); commit(); arrivedAt = Date.now(); nextSolo = Date.now() + 900; }
+  ready = true; renderBoard();
+}, 600);
+setInterval(tick, 150);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
