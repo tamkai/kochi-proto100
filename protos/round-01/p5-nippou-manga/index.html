@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日報が翌朝4コマになる</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;background:#f3ede2;color:#1b1b1b;min-height:100vh;
+  background-image:radial-gradient(#d8cdb8 1px,transparent 1px);background-size:14px 14px}
+.wrap{display:grid;grid-template-columns:380px 1fr;gap:32px;max-width:1240px;margin:0 auto;padding:28px 28px 40px;align-items:start}
+h1{font-size:30px;line-height:1.25;font-weight:900;letter-spacing:.02em}
+h1 em{font-style:normal;background:linear-gradient(transparent 60%,#ffd84d 60%)}
+.lead{margin:10px 0 18px;font-size:14px;color:#555}
+.note{background:#fff;border:2px solid #1b1b1b;border-radius:6px;padding:16px;box-shadow:6px 6px 0 #1b1b1b}
+.note label{font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:6px}
+.note input,.note textarea{width:100%;font:inherit;font-size:15px;border:none;outline:none;background:transparent}
+.note input{border-bottom:2px dashed #bbb;padding:4px 0;margin-bottom:14px;font-weight:700}
+.note textarea{height:170px;resize:vertical;line-height:30px;
+  background-image:repeating-linear-gradient(transparent 0 29px,#e4dccb 29px 30px)}
+.hint{font-size:11px;color:#888;margin-top:6px}
+.sleep{margin-top:18px;width:100%;font:inherit;font-size:22px;font-weight:900;padding:16px;border:2px solid #1b1b1b;border-radius:999px;
+  background:#1f2a5a;color:#fff7c2;cursor:pointer;box-shadow:0 6px 0 #0c1233;transition:transform .1s}
+.sleep:hover{transform:translateY(-2px)}.sleep:active{transform:translateY(4px);box-shadow:0 2px 0 #0c1233}
+.page{background:#fff;border:2px solid #1b1b1b;padding:18px 20px 16px;box-shadow:10px 10px 0 rgba(0,0,0,.18);position:relative}
+.ph{display:flex;align-items:baseline;justify-content:space-between;border-bottom:3px solid #1b1b1b;padding-bottom:8px;margin-bottom:12px}
+.ph b{font-size:26px;font-weight:900}.ph span{font-size:12px;color:#666}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{position:relative;border:3px solid #1b1b1b;aspect-ratio:4/3;background:#fff;overflow:hidden}
+.panel svg{width:100%;height:100%;display:block}
+.panel .tag{position:absolute;left:0;top:0;background:#1b1b1b;color:#fff;font-size:12px;font-weight:900;padding:2px 7px;z-index:2}
+.panel.empty{background:repeating-linear-gradient(45deg,#faf7f0 0 10px,#f2ecdf 10px 20px);display:grid;place-items:center;color:#b9ad95;font-size:42px;font-weight:900}
+.panel.show{animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{from{transform:scale(.6) rotate(-3deg);opacity:0}to{transform:none;opacity:1}}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:#777;gap:10px;flex-wrap:wrap}
+.foot button{font:inherit;font-size:13px;font-weight:700;border:2px solid #1b1b1b;background:#ffd84d;padding:6px 12px;border-radius:999px;cursor:pointer}
+.terre{position:absolute;right:-14px;top:-18px;background:#ff7aa2;color:#fff;font-weight:900;font-size:13px;padding:8px 12px;border-radius:50%;
+  transform:rotate(12deg);border:2px solid #1b1b1b;opacity:0;transition:opacity .4s}
+.terre.on{opacity:1}
+/* svg */
+.ln{fill:none;stroke:#1b1b1b;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.sfx{font-weight:900;fill:#1b1b1b;stroke:#fff;stroke-width:7px;paint-order:stroke;font-family:inherit}
+.bt{font-size:17px;font-weight:700;fill:#1b1b1b}
+.nt{font-size:15px;font-weight:700;fill:#1b1b1b}
+.soul{animation:rise 2.4s ease-in-out infinite alternate}
+@keyframes rise{from{transform:translateY(8px)}to{transform:translateY(-14px)}}
+.clone{animation:pop .4s both}
+.spark{animation:tw 1.2s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+@keyframes tw{from{opacity:.3;transform:scale(.6)}to{opacity:1;transform:scale(1.1)}}
+/* night overlay */
+#night{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:linear-gradient(#070b24,#1a2156);color:#fff7c2;transition:background 1s}
+#night.on{display:flex}
+#night.morning{background:linear-gradient(#ffd7a8,#ffefe0 60%,#fff);color:#5a3410}
+#moon{font-size:90px;transition:transform 1s,opacity .6s}
+#night.morning #moon{transform:translateY(-60px);opacity:0}
+#clock{font-size:64px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:.05em}
+#nmsg{font-size:18px;font-weight:700}
+.zzz{position:absolute;font-size:28px;font-weight:900;animation:zz 1.6s infinite}
+@keyframes zz{from{transform:translate(0,0);opacity:0}50%{opacity:1}to{transform:translate(30px,-50px);opacity:0}}
+#night.morning .zzz{display:none}
+@media (max-width:820px){.wrap{grid-template-columns:1fr;padding:18px}.grid{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section>
+    <h1>きょうの日報が、<br><em>あしたの朝、4コマ</em>になる。</h1>
+    <p class="lead">今日あったことを3〜4行書いて「寝る」を押すだけ。翌朝の電車で読む、あなたが主人公の漫画。</p>
+    <div class="note">
+      <label>主人公（あなた）の名前</label>
+      <input id="name" value="タナカ" maxlength="10">
+      <label>きょうの日報（1行に1つ。時刻はあってもなくても）</label>
+      <textarea id="log">8:50 寝坊して駅までダッシュ
+11:00 会議が3本つづいた
+15:30 コンビニのプリンがうまかった
+21:00 疲れた</textarea>
+      <p class="hint">「疲れた」「会議」「うまい」「寝坊」「ミス」「褒められた」などに反応して、オチを盛ります。</p>
+    </div>
+    <button class="sleep" id="sleep">🌙 寝る</button>
+  </section>
+  <section>
+    <div class="page" id="page">
+      <div class="terre" id="terre">ちょっと<br>盛ってます</div>
+      <div class="ph"><b id="ttl">？？？の一日</b><span id="ep">作：ゆうべの自分</span></div>
+      <div class="grid" id="grid"></div>
+      <div class="foot"><span id="cap">まだ白紙。今夜の日報を待っています。</span>
+        <span><button id="again" hidden>もう一回寝る</button></span></div>
+    </div>
+  </section>
+</div>
+<div id="night"><div id="moon">🌙</div><div class="zzz" style="left:58%;top:30%">Z</div><div class="zzz" style="left:62%;top:26%;animation-delay:.5s">z</div>
+  <div id="clock">23:41</div><div id="nmsg">おやすみなさい。日報を漫画にしています…</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const R=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const ROLES=['起','承','転','結'];
+// 作り物のルール：キーワード → 表情・演出・擬音・オチ
+const RULES=[
+ {re:/疲|つかれ|ねむ|眠|ぐったり|へとへと/,ex:'tired',fx:'soul',sfx:['スゥ…','ぬけ〜'],ochi:'魂が、ちょっと出ていった。'},
+ {re:/会議|打ち合わせ|ミーティング|MTG|定例/,ex:'shock',fx:'clones',sfx:['ワラワラ','ぞろぞろ'],ochi:'会議は、増殖する。'},
+ {re:/うま|美味|おいし|食べ|ランチ|プリン|ラーメン|カフェ|コーヒー|ビール/,ex:'happy',fx:'sparkle',sfx:['キラーン','じゅわ…'],ochi:'この瞬間のために生きている。'},
+ {re:/寝坊|遅刻|走|ダッシュ|急い|ギリギリ/,ex:'shock',fx:'speed',sfx:['ダダダッ','ズザーッ'],ochi:'人は、こんなに速く走れる。'},
+ {re:/ミス|失敗|最悪|怒|やらか|雨|落ち込/,ex:'angry',fx:'gloom',sfx:['ズーン','どよ〜ん'],ochi:'それでも、地球は回っている。'},
+ {re:/褒め|ほめ|ありがと|感謝|嬉|うれし|できた|終わ|完成|達成/,ex:'happy',fx:'halo',sfx:['ドーン','パァァ'],ochi:'ちょっとだけ、主人公だった。'},
+ {re:/メール|資料|PC|パソコン|作業|入力|エクセル|Excel/,ex:'neutral',fx:'type',sfx:['カタカタ','ッターン'],ochi:'指だけが、別の生き物になった。'},
+];
+const HERO={ex:'happy',fx:'halo',sfx:['ドーン'],ochi:'——今日も、よく生きた。'};
+const ruleOf=t=>RULES.find(r=>r.re.test(t));
+
+function parse(text){
+  let items=text.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>{
+    const m=s.match(/^(\d{1,2}[:：]\d{2})\s*(.*)$/);return m?{t:m[1].replace('：',':'),s:m[2]||'…'}:{t:'',s};});
+  if(!items.length)items=[{t:'',s:'特に何もなかった'}];
+  while(items.length<4){const k=items.length;
+    if(k===1)items.unshift({t:'',s:'いつもの朝。'});else items.splice(k-1,0,{t:'',s:k===2?'なんやかんやあった':'そのとき——'});}
+  if(items.length>4)items=[items[0],items[1],items[items.length-2],items[items.length-1]];
+  return items;
+}
+function wrap(s,n,max=3){const o=[];for(let i=0;i<s.length&&o.length<max;i+=n)o.push(s.slice(i,i+n));
+  if(s.length>n*max)o[max-1]=o[max-1].slice(0,n-1)+'…';return o;}
+function tsp(lines,x,y,lh){return lines.map((l,i)=>`<tspan x="${x}" y="${y+i*lh}">${esc(l)}</tspan>`).join('');}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// 人物（丸顔＋棒の体）
+function fig(x,y,s,ex,blush){
+  const eyes={neutral:'<circle cx="-10" cy="-4" r="3"/><circle cx="10" cy="-4" r="3"/>',
+    happy:'<path class="ln" d="M-15,-2 q5,-8 10,0 M5,-2 q5,-8 10,0"/>',
+    tired:'<path class="ln" d="M-15,-2 h10 M5,-2 h10"/><path class="ln" d="M-14,4 q2,4 0,8" stroke-width="2"/>',
+    shock:'<circle class="ln" cx="-10" cy="-5" r="7" fill="#fff"/><circle class="ln" cx="10" cy="-5" r="7" fill="#fff"/><circle cx="-10" cy="-5" r="2.5"/><circle cx="10" cy="-5" r="2.5"/>',
+    angry:'<path class="ln" d="M-18,-13 l12,5 M18,-13 l-12,5"/><circle cx="-10" cy="-2" r="3"/><circle cx="10" cy="-2" r="3"/>'}[ex];
+  const mouth={neutral:'<path class="ln" d="M-7,12 h14"/>',happy:'<path class="ln" d="M-10,9 q10,13 20,0 z" fill="#fff"/>',
+    tired:'<path class="ln" d="M-9,14 q4,-5 9,0 q4,5 9,0"/>',shock:'<ellipse class="ln" cx="0" cy="14" rx="5" ry="7"/>',
+    angry:'<path class="ln" d="M-9,16 q9,-8 18,0"/>'}[ex];
+  const arms={happy:'M0,45 l-30,-30 M0,45 l30,-30',tired:'M0,45 l-14,38 M0,45 l14,38',shock:'M0,45 l-36,-6 M0,45 l36,-6',
+    angry:'M0,45 l-24,18 l8,-10 M0,45 l24,18 l-8,-10',neutral:'M0,45 l-24,26 M0,45 l24,26'}[ex];
+  const b=blush?'<ellipse cx="-17" cy="7" rx="6" ry="3.5" fill="#ff8fab" opacity=".8"/><ellipse cx="17" cy="7" rx="6" ry="3.5" fill="#ff8fab" opacity=".8"/>':'';
+  return `<g transform="translate(${x},${y}) scale(${s})"><path class="ln" d="M0,28 V88 ${arms} M0,88 l-18,40 M0,88 l18,40"/>
+   <circle class="ln" r="28" fill="#fff"/><path class="ln" d="M-24,-14 q10,-22 34,-16 q12,4 14,14" stroke-width="5"/>${eyes}${mouth}${b}</g>`;
+}
+function bubble(text,x,y,w,h,tx,ty){
+  const L=wrap(text,Math.max(5,Math.floor((w-24)/17)));
+  return `<path d="M${x+w*.3},${y+h-4} L${tx},${ty} L${x+w*.5},${y+h-6}" fill="#fff" class="ln"/>
+   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h/2.2}" fill="#fff" class="ln"/>
+   <path d="M${x+w*.3+3},${y+h-3} L${x+w*.5-3},${y+h-4}" stroke="#fff" stroke-width="6"/>
+   <text class="bt" text-anchor="middle">${tsp(L,x+w/2,y+h/2-(L.length-1)*10+6,20)}</text>`;
+}
+function narr(text,x,y,w){const L=wrap(text,Math.floor((w-16)/15),2);
+  return `<rect x="${x}" y="${y}" width="${w}" height="${L.length*20+14}" fill="#fffbe6" class="ln" stroke-width="2.5"/><text class="nt">${tsp(L,x+9,y+23,20)}</text>`;}
+function sfx(t,x,y,size,rot){return `<text class="sfx" x="${x}" y="${y}" font-size="${size}" transform="rotate(${rot} ${x} ${y})">${esc(t)}</text>`;}
+function focus(cx,cy,n,r0){let s='';for(let i=0;i<n;i++){const a=R(0,6.283),w=R(.01,.03),r=R(r0,r0+50);
+  s+=`<polygon points="${cx+Math.cos(a-w)*400},${cy+Math.sin(a-w)*400} ${cx+Math.cos(a)*r},${cy+Math.sin(a)*r} ${cx+Math.cos(a+w)*400},${cy+Math.sin(a+w)*400}" fill="#1b1b1b"/>`;}return s;}
+function speed(n){let s='';for(let i=0;i<n;i++){const y=R(20,290),x=R(220,330);s+=`<line x1="${x}" y1="${y}" x2="${x+R(60,160)}" y2="${y}" stroke="#1b1b1b" stroke-width="${R(1,3)}"/>`;}return s;}
+function star(x,y,r){return `<path class="spark" style="animation-delay:${R(0,1)}s" d="M${x},${y-r} Q${x},${y} ${x+r},${y} Q${x},${y} ${x},${y+r} Q${x},${y} ${x-r},${y} Q${x},${y} ${x},${y-r}Z" fill="#ffd84d" stroke="#1b1b1b" stroke-width="2"/>`;}
+function soul(x,y,s){return `<g transform="translate(${x},${y}) scale(${s})"><g class="soul"><path d="M0,0 c-26,-2 -30,-46 0,-52 c30,6 26,50 0,52 q-6,14 6,26" fill="#fff" stroke="#1b1b1b" stroke-width="2.5" opacity=".92"/>
+  <path class="ln" stroke-width="2" d="M-11,-28 h7 M4,-28 h7"/><ellipse cx="0" cy="-16" rx="3" ry="4" fill="none" stroke="#1b1b1b" stroke-width="2"/></g></g>`;}
+function gloom(x,y){let s=`<path d="M${x-60},${y} q0,-30 30,-24 q10,-26 40,-12 q30,-8 30,24 q20,10 0,22 h-90 q-24,-2 -10,-10z" fill="#777" stroke="#1b1b1b" stroke-width="2.5"/>`;
+  for(let i=0;i<7;i++){const lx=x-50+i*16;s+=`<path d="M${lx},${y+28} q4,12 0,24 q-4,12 0,24" stroke="#555" stroke-width="2" fill="none"/>`;}return s;}
+
+// 演出（lvl: 1=控えめ, 2=オチで盛る）
+function effect(fx,lvl,cx,cy){
+  if(fx==='soul')return soul(cx+R(-6,6),cy-40-lvl*14,lvl===2?1.5:.8);
+  if(fx==='clones'){let s='';const n=lvl===2?14:3;for(let i=0;i<n;i++)s+=`<g class="clone" style="animation-delay:${.6+i*.08}s">${fig(R(20,380),R(60,230),R(.25,.45),pick(['shock','neutral','tired']))}</g>`;return s;}
+  if(fx==='sparkle'){let s='';for(let i=0;i<(lvl===2?12:4);i++)s+=star(R(30,370),R(20,170),R(8,18));return s;}
+  if(fx==='speed')return speed(lvl===2?40:16);
+  if(fx==='gloom')return gloom(cx,cy-120);
+  if(fx==='halo')return `<circle cx="${cx}" cy="${cy}" r="${lvl===2?120:70}" fill="#fff3b0"/>`+(lvl===2?star(cx-80,cy-60,16)+star(cx+90,cy-40,12)+star(cx+70,cy+70,10):'');
+  if(fx==='type')return `<rect x="${cx+30}" y="${cy+50}" width="80" height="50" fill="#ddd" class="ln"/><path class="ln" d="M${cx+20},${cy+100} h100"/>`;
+  return '';
+}
+
+function panelSVG(i,item,name,endRule){
+  const r=i===3?endRule:(ruleOf(item.s)||{ex:'neutral',fx:'',sfx:['…']});
+  const ts=item.t?`<text x="392" y="292" text-anchor="end" font-size="13" fill="#888">${esc(item.t)}</text>`:'';
+  let bg='',fg='';
+  if(i===0){ // 起：ナレーションで静かに入る
+    bg=effect(r.fx,1,120,170);
+    fg=narr(`${item.t?item.t+'。':'その日、'}${name}は——`,14,24,220)+fig(130,150,.9,r.ex==='happy'?'neutral':r.ex)+bubble(item.s,210,90,180,76,175,150);
+  }else if(i===1){ // 承：吹き出しで状況
+    bg=effect(r.fx,1,280,160);
+    fg=bubble(item.s,22,22,230,80,250,115)+fig(290,150,.95,r.ex)+sfx(pick(r.sfx),36,250,26,-8);
+  }else if(i===2){ // 転：集中線と擬音
+    bg=focus(200,165,70,95)+effect(r.fx,1,200,160);
+    fg=fig(200,140,1.1,r.ex==='neutral'?'shock':r.ex)+sfx(pick(r.sfx.concat(['ドンッ','ハッ'])),18,70,44,-12)+bubble(item.s+'！',236,14,156,72,225,110);
+  }else{ // 結：オチを盛る
+    bg=effect(r.fx,2,200,160);
+    fg=fig(200,130,1.05,r.ex,true)+sfx(pick(r.sfx),250,90,46,10)+narr(r.ochi,14,226,372)+`<text x="14" y="30" class="nt" font-size="13">「${esc(wrap(item.s,14,1)[0])}」</text>`;
+  }
+  return `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">${bg}${fg}${ts}</svg>`;
+}
+
+function emptyPage(){ $('grid').innerHTML=ROLES.map(r=>`<div class="panel empty"><span class="tag">${r}</span>${r}</div>`).join(''); }
+
+function render(){
+  const name=($('name').value.trim()||'わたし').slice(0,10), items=parse($('log').value);
+  const all=items.map(x=>x.s).join(' ');
+  const endRule=ruleOf(items[3].s)||ruleOf(all)||HERO;
+  const ep=(+localStorage.getItem('p5ep')||0)+1;localStorage.setItem('p5ep',ep);
+  $('ttl').textContent=`${name}の一日`;$('ep').textContent=`第${ep}話　作：ゆうべの自分`;
+  $('grid').innerHTML=items.map((it,i)=>`<div class="panel" style="opacity:0"><span class="tag">${ROLES[i]}</span>${panelSVG(i,it,name,endRule)}</div>`).join('');
+  [...$('grid').children].forEach((p,i)=>setTimeout(()=>{p.style.opacity='';p.classList.add('show');},250+i*650));
+  setTimeout(()=>{$('terre').classList.add('on');$('cap').textContent='通勤電車で、こっそり読んでください。※本人の記憶より、ちょっと良く描いています。';$('again').hidden=false;},250+4*650);
+}
+
+function sleep(){
+  const n=$('night');$('terre').classList.remove('on');n.className='on';$('nmsg').textContent='おやすみなさい。日報を漫画にしています…';
+  let m=23*60+41;const end=24*60+7*60+12;
+  const tick=setInterval(()=>{m=Math.min(end,m+17);const h=Math.floor(m/60)%24,mm=m%60;
+    $('clock').textContent=`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    if(m>=end){clearInterval(tick);n.className='on morning';$('nmsg').textContent='おはよう。きのうのあなたが、漫画になりました。';
+      setTimeout(()=>{n.className='';render();if(innerWidth<820)$('page').scrollIntoView({behavior:'smooth'});},1300);}
+  },40);
+}
+$('sleep').onclick=sleep;$('again').onclick=sleep;
+emptyPage();
+</script>
+</body>
+</html>

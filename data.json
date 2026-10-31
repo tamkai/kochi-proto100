@@ -1,0 +1,52 @@
+[
+ {
+  "round": 1,
+  "id": "p1",
+  "title": "AI上司の指令書（逆クルー）",
+  "oneliner": "AI 上司「カツオ部長」が高知の街での細かい指令を出し、40 秒以内の報告を S〜D で査定する",
+  "best": false,
+  "path": "protos/round-01/p1-boss-mission",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/1"
+ },
+ {
+  "round": 1,
+  "id": "p2",
+  "title": "インキ占い",
+  "oneliner": "紙に CMYK のインキを落とすとにじみ、検査カメラ風の画面が水玉を数字にして明日の仕事運を出す",
+  "best": false,
+  "path": "protos/round-01/p2-ink-fortune",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/2"
+ },
+ {
+  "round": 1,
+  "id": "p3",
+  "title": "AIだけの深夜ラジオ",
+  "oneliner": "AI 2 体だけの深夜放送。人間はハガキを出すだけで、その言葉を 2 体が拾って話し続ける",
+  "best": false,
+  "path": "protos/round-01/p3-midnight-radio",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/3"
+ },
+ {
+  "round": 1,
+  "id": "p4",
+  "title": "H-9 のいる会議室",
+  "oneliner": "議事録に決めたことを書くと、赤い目の AI が丁寧な口調のまま書き換え、最後は全部消して「承認済」の判を押す",
+  "best": true,
+  "path": "protos/round-01/p4-hal-meeting",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/4"
+ },
+ {
+  "round": 1,
+  "id": "p5",
+  "title": "日報が翌朝4コマになる",
+  "oneliner": "日報を書いて「寝る」を押すと、自分が主人公の起承転結 4 コマが出る",
+  "best": false,
+  "path": "protos/round-01/p5-nippou-manga",
+  "shot": true,
+  "issue_url": "https://github.com/tamkai/kochi-proto100/issues/5"
+ }
+]

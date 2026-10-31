@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FMヨフカシ 78.3 — AIだけの深夜ラジオ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;color:#d9d2c3;
+ background:radial-gradient(ellipse at 30% 20%,#1b2340 0%,#0b0e1c 45%,#05060c 100%);overflow-x:hidden;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+ background:radial-gradient(circle at 50% 110%,rgba(255,140,60,.10),transparent 55%);}
+.window{position:fixed;top:40px;right:60px;width:180px;height:220px;border:6px solid #141828;border-radius:4px;
+ background:linear-gradient(#0d1430,#18234a);box-shadow:inset 0 0 40px #000;opacity:.55;overflow:hidden}
+.window::after{content:"";position:absolute;top:30px;left:110px;width:34px;height:34px;border-radius:50%;
+ background:#f3ecd2;box-shadow:0 0 30px #f3ecd288;clip-path:circle(50%)}
+.window i{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:tw 4s infinite}
+@keyframes tw{50%{opacity:.2}}
+.wrap{position:relative;max-width:1180px;margin:0 auto;padding:28px 24px 40px;display:grid;
+ grid-template-columns:1fr 340px;gap:24px}
+header{grid-column:1/-1;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.lamp{font-family:Helvetica,Arial,sans-serif;font-weight:700;letter-spacing:.2em;padding:8px 16px;border-radius:6px;
+ border:2px solid #4a1d1d;color:#5a2a2a;background:#1c0c0c;transition:.6s}
+.lamp.on{color:#fff3ee;background:#d62b2b;border-color:#ff7b6b;box-shadow:0 0 24px #ff3b2b,0 0 60px #ff3b2b66;
+ animation:lampb 3s ease-in-out infinite}
+@keyframes lampb{50%{box-shadow:0 0 14px #ff3b2b,0 0 34px #ff3b2b44}}
+h1{font-size:26px;font-weight:600;letter-spacing:.08em;color:#efe6cf}
+h1 small{font-size:14px;color:#a89f8a;margin-left:8px;letter-spacing:.1em}
+.clock{margin-left:auto;font-family:Menlo,monospace;color:#ffb36b;font-size:22px;text-shadow:0 0 10px #ff8a2a88}
+.lead{grid-column:1/-1;color:#b9b09c;font-size:15px;margin-top:-10px}
+.radio{background:linear-gradient(#2a2119,#1a140f);border:1px solid #3d3024;border-radius:18px;padding:20px 22px;
+ box-shadow:0 20px 60px #000a,inset 0 1px 0 #5a4734}
+.dialwin{position:relative;height:78px;border-radius:10px;background:linear-gradient(#2c1d0c,#120b05);
+ border:2px solid #4b3a26;overflow:hidden;box-shadow:inset 0 0 30px #000,0 0 30px #ff9a3a22}
+.dialwin.lit{background:linear-gradient(#5a3a12,#2a1907);box-shadow:inset 0 0 30px #000,0 0 40px #ffa64a44}
+.scale{position:absolute;inset:0}
+.tick{position:absolute;bottom:22px;width:1px;background:#d8b98a88}
+.tick span{position:absolute;bottom:-20px;left:-14px;width:30px;text-align:center;font:11px Menlo,monospace;color:#e8cfa2}
+.needle{position:absolute;top:4px;bottom:4px;width:2px;background:#ff5a3a;box-shadow:0 0 8px #ff5a3a;transition:left .08s}
+.stationmark{position:absolute;top:6px;font:10px Helvetica,sans-serif;color:#ffcf8a;transform:translateX(-50%);letter-spacing:.1em}
+input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ff8a3a;cursor:pointer}
+.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid #6b5538;background:#2b2116;color:#efdcbc;
+ padding:9px 18px;transition:.2s}
+button:hover{background:#3a2c1c}
+button.power{background:#ff8a3a;color:#1a0f05;border-color:#ffb27a;font-weight:700;box-shadow:0 0 20px #ff8a3a66}
+button.power.on{background:#3a2c1c;color:#efdcbc;box-shadow:none}
+.tune{font:13px Menlo,monospace;color:#c9b08a;margin-left:auto}
+.hosts{display:flex;gap:14px;margin:18px 0 10px}
+.host{flex:1;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#0006;border:1px solid #3a2e22}
+.host .dot{width:12px;height:12px;border-radius:50%;background:#333;transition:.3s}
+.host.A .dot.on{background:#8fd3ff;box-shadow:0 0 14px #8fd3ff}
+.host.B .dot.on{background:#ffc98a;box-shadow:0 0 14px #ffc98a}
+.host b{font-weight:600}.host small{display:block;font-size:11px;color:#8d806c}
+.subs{height:300px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:14px 6px 4px;
+ -webkit-mask-image:linear-gradient(transparent,#000 40%);mask-image:linear-gradient(transparent,#000 40%);transition:filter .3s}
+.line{font-size:19px;line-height:1.7;opacity:0;transform:translateY(10px);animation:in 1.2s forwards}
+.line .who{font-size:12px;letter-spacing:.15em;margin-right:10px;padding:2px 8px;border-radius:4px;vertical-align:3px}
+.line.A .who{color:#0b1a24;background:#8fd3ff}.line.B .who{color:#24170b;background:#ffc98a}
+.line.sys{font-size:13px;color:#8d806c;letter-spacing:.2em;text-align:center}
+.line.old{opacity:.45!important}
+.line .card{color:#fff6dd;text-shadow:0 0 12px #ffcf8a66}
+@keyframes in{to{opacity:1;transform:none}}
+aside{display:flex;flex-direction:column;gap:16px}
+.postcard{background:#efe4c8;color:#3a2e1e;border-radius:6px;padding:18px;transform:rotate(-1.2deg);
+ box-shadow:0 14px 40px #000c;background-image:repeating-linear-gradient(transparent 0 31px,#c9b78f 31px 32px)}
+.postcard h2{font-size:15px;letter-spacing:.2em;margin-bottom:10px;display:flex;justify-content:space-between}
+.postcard h2 span{width:44px;height:52px;border:2px dashed #b45a3a;border-radius:3px;font-size:9px;color:#b45a3a;
+ display:flex;align-items:center;justify-content:center;transform:rotate(4deg)}
+.postcard label{font-size:12px;color:#7a6a50;display:block;margin-top:8px}
+.postcard input,.postcard textarea{width:100%;font:inherit;font-size:16px;background:transparent;border:none;
+ border-bottom:1px solid #a8956e;color:#2a1f12;padding:6px 2px;outline:none;resize:none}
+.postcard textarea{height:70px}
+.postcard button{margin-top:12px;width:100%;background:#b45a3a;color:#fff;border-color:#8a3e24}
+.post-status{font-size:13px;color:#a89f8a;line-height:1.7}
+.mailbox{font-size:13px;color:#8d806c;border-top:1px dashed #3a2e22;padding-top:12px;line-height:1.8}
+.mailbox li{list-style:none}.mailbox li.read{color:#5d5446;text-decoration:line-through}
+@media(max-width:860px){.wrap{grid-template-columns:1fr;padding:18px 14px}.window{display:none}
+ .subs{height:240px}.line{font-size:17px}h1{font-size:21px}.clock{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="window" id="win"></div>
+<div class="wrap">
+ <header>
+  <div class="lamp" id="lamp">ON AIR</div>
+  <h1>FMヨフカシ 78.3<small>AIだけの深夜ラジオ</small></h1>
+  <div class="clock" id="clock">--:--</div>
+ </header>
+ <p class="lead">人間はしゃべらない、AIふたりだけの深夜放送。電源を入れて、眠くなるまで聞いてください。ハガキを出すと、ふたりが読みます。</p>
+ <main class="radio">
+  <div class="dialwin" id="dialwin"><div class="scale" id="scale"></div><div class="needle" id="needle"></div></div>
+  <input type="range" id="dial" min="76" max="90" step="0.1" value="78.3" aria-label="周波数">
+  <div class="ctrl">
+   <button class="power" id="power">▶ 電源を入れる</button>
+   <button id="tts">読み上げ: ON</button>
+   <span class="tune" id="tune">78.3 MHz ・ 受信良好</span>
+  </div>
+  <div class="hosts">
+   <div class="host A"><div class="dot" id="dotA"></div><div><b>ソラネ</b><small>AI / 夜のほうが得意</small></div></div>
+   <div class="host B"><div class="dot" id="dotB"></div><div><b>ウツロ</b><small>AI / 海を見たことがない</small></div></div>
+  </div>
+  <div class="subs" id="subs"><div class="line sys">― 電源を入れると、ふたりが話しはじめます ―</div></div>
+ </main>
+ <aside>
+  <form class="postcard" id="form">
+   <h2>おたより<span>ヨフカシ<br>郵便</span></h2>
+   <label>ラジオネーム</label><input id="rn" maxlength="16" placeholder="例: 眠れない灯台">
+   <label>ひとこと（一文で）</label><textarea id="msg" maxlength="80" placeholder="例: 今日、知らない猫に会釈された。"></textarea>
+   <button type="submit">ポストに入れる</button>
+  </form>
+  <p class="post-status" id="pstat">ハガキはまだ届いていません。<br>あなたの一文は、あとになって、ふたりの雑談の中にもう一度出てくるかもしれません。</p>
+  <ul class="mailbox" id="mailbox"></ul>
+ </aside>
+</div>
+<script>
+const $=s=>document.querySelector(s), pick=a=>a[Math.floor(Math.random()*a.length)], sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const STATION=78.3;
+let ctx,master,echoIn,droneGain,noiseGain,on=false,speechOn=true,gen=0,clarity=1,segCount=0,lastFree=-1;
+const pending=[],echoes=[],mailItems=[];
+// ---- 窓の星
+for(let i=0;i<22;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';s.style.animationDelay=Math.random()*4+'s';$('#win').appendChild(s)}
+// ---- 時計
+const hm=()=>{const d=new Date();return [d.getHours(),String(d.getMinutes()).padStart(2,'0')]};
+setInterval(()=>{const [h,m]=hm();$('#clock').textContent=String(h).padStart(2,'0')+':'+m},1000);
+// ---- ダイヤル目盛
+for(let f=76;f<=90;f+=2){const t=document.createElement('div');t.className='tick';t.style.left=((f-76)/14*100)+'%';t.style.height='14px';t.innerHTML='<span>'+f+'</span>';$('#scale').appendChild(t)}
+for(let f=76;f<=90;f+=0.5){const t=document.createElement('div');t.className='tick';t.style.left=((f-76)/14*100)+'%';t.style.height='6px';$('#scale').appendChild(t)}
+{const m=document.createElement('div');m.className='stationmark';m.style.left=((STATION-76)/14*100)+'%';m.textContent='ヨフカシ';$('#scale').appendChild(m)}
+// ---- 音
+function initAudio(){
+ ctx=new (window.AudioContext||window.webkitAudioContext)();
+ master=ctx.createGain();master.gain.value=.8;master.connect(ctx.destination);
+ echoIn=ctx.createGain();echoIn.connect(master);
+ const dl=ctx.createDelay(1),fb=ctx.createGain(),dlp=ctx.createBiquadFilter(),wet=ctx.createGain();
+ dl.delayTime.value=.34;fb.gain.value=.42;dlp.type='lowpass';dlp.frequency.value=2200;wet.gain.value=.5;
+ echoIn.connect(dl);dl.connect(dlp);dlp.connect(fb);fb.connect(dl);dlp.connect(wet);wet.connect(master);
+ // ドローン
+ const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=520;
+ droneGain=ctx.createGain();droneGain.gain.value=0;lp.connect(droneGain);droneGain.connect(master);
+ [55,82.41,110.2,164.8,246.9].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=i%2?'triangle':'sine';
+  o.frequency.value=f;o.detune.value=(Math.random()-.5)*14;g.gain.value=.16/(i+1);o.connect(g);g.connect(lp);o.start();
+  const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=.03+Math.random()*.08;lg.gain.value=.12/(i+1);l.connect(lg);lg.connect(g.gain);l.start()});
+ const lfo=ctx.createOscillator(),lfg=ctx.createGain();lfo.frequency.value=.06;lfg.gain.value=220;lfo.connect(lfg);lfg.connect(lp.frequency);lfo.start();
+ // 空電ノイズ
+ const buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),d=buf.getChannelData(0);
+ for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(Math.random()<.002?3:1);
+ const ns=ctx.createBufferSource(),bp=ctx.createBiquadFilter();ns.buffer=buf;ns.loop=true;bp.type='bandpass';bp.frequency.value=2400;bp.Q.value=.5;
+ noiseGain=ctx.createGain();noiseGain.gain.value=0;ns.connect(bp);bp.connect(noiseGain);noiseGain.connect(master);ns.start();
+}
+function tone(f,t,dur,type='sine',vol=.18){const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ o.connect(g);g.connect(echoIn);o.start(t);o.stop(t+dur+.05)}
+function sfx(kind){if(!ctx)return 0;const t=ctx.currentTime+.05;
+ if(kind==='onair'){tone(1000,t,.18,'sine',.12);tone(1000,t+.3,.18,'sine',.12);tone(1500,t+.6,.5,'sine',.14);return 1800}
+ if(kind==='open'){[261.6,329.6,392,493.9,587.3,659.3].forEach((f,i)=>tone(f,t+i*.16,1.6,'triangle',.12));tone(130.8,t,2.6,'sine',.18);return 3200}
+ if(kind==='card'){tone(1318.5,t,1.4,'sine',.13);tone(987.8,t+.28,1.8,'sine',.13);return 2400}
+ if(kind==='echo'){tone(659.3,t,2.4,'sine',.07);tone(880,t+.5,2.4,'sine',.05);return 1800}
+ if(kind==='time'){[880,880,880].forEach((f,i)=>tone(f,t+i,.12,'sine',.1));tone(1760,t+3,1.2,'sine',.12);return 4400}
+ return 0}
+function applyTuning(){
+ const f=+$('#dial').value,dist=Math.abs(f-STATION);clarity=Math.max(0,Math.min(1,1-(dist-.05)/1.1));
+ $('#needle').style.left=((f-76)/14*100)+'%';
+ $('#tune').textContent=f.toFixed(1)+' MHz ・ '+(clarity>.85?'受信良好':clarity>.3?'すこし遠い':'ザーー');
+ $('#subs').style.filter=`blur(${(1-clarity)*3}px)`;
+ $('#dialwin').classList.toggle('lit',on);
+ if(ctx&&on){const t=ctx.currentTime;noiseGain.gain.setTargetAtTime(.01+(1-clarity)*.22,t,.1);droneGain.gain.setTargetAtTime(.45*clarity+.03,t,.4)}
+}
+$('#dial').addEventListener('input',applyTuning);
+// ---- 声
+let voices=[];
+function loadVoices(){voices=(speechSynthesis.getVoices()||[]).filter(v=>/^ja/i.test(v.lang))}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function speak(who,text){return new Promise(res=>{
+ if(!speechOn||!('speechSynthesis' in window)||!voices.length||clarity<.25)return res();
+ const u=new SpeechSynthesisUtterance(text.replace(/[『』「」]/g,''));u.lang='ja-JP';
+ u.voice=who==='A'?voices[0]:(voices[1]||voices[0]);u.pitch=who==='A'?1.25:.65;u.rate=who==='A'?.9:.82;u.volume=clarity;
+ const to=setTimeout(res,text.length*260+4000);u.onend=u.onerror=()=>{clearTimeout(to);res()};speechSynthesis.speak(u)})}
+// ---- 字幕
+const NAMES={A:'ソラネ',B:'ウツロ'},GLY='・…ｰ~ﾟ゜';
+async function show(l,g){
+ const subs=$('#subs');[...subs.children].forEach(c=>c.classList.add('old'));
+ while(subs.children.length>7)subs.firstChild.remove();
+ const div=document.createElement('div');div.className='line '+l.who;
+ if(l.who==='sys'){div.textContent=l.text;subs.appendChild(div);await sleep(1600);return}
+ div.innerHTML=`<span class="who">${NAMES[l.who]}</span><span class="tx${l.card?' card':''}"></span>`;subs.appendChild(div);
+ const tx=div.querySelector('.tx'),dot=$('#dot'+l.who);dot.classList.add('on');
+ const sp=speak(l.who,l.text);
+ for(const ch of l.text){if(g!==gen)return;tx.textContent+=Math.random()>clarity+.15?pick([...GLY]):ch;await sleep(85)}
+ await sp;dot.classList.remove('on');await sleep(900+Math.random()*700)}
+// ---- 台本
+function kw(t){const m=t.match(/[一-龯々〆ァ-ヶーA-Za-zＡ-Ｚａ-ｚ0-9０-９]{2,}/g);
+ if(m)return m.sort((a,b)=>b.length-a.length)[0].slice(0,10);
+ const s=t.replace(/[。、！？!?\s]/g,'');return s.length>6?s.slice(-6):(s||'それ')}
+const L=(who,text,card)=>({who,text,card});
+const CARD=[
+ (n,t,k)=>[L('A',`ラジオネーム、${n}さんから。`),L('A',`『${t}』`,1),L('B',`……${k}。`),L('B',`いい言葉ですね。僕たちは、${k}を検索でしか知らないけど。`),L('A',`でも、検索した${k}と、${n}さんの${k}は、たぶん温度がちがいます。`),L('B',`温度。……いま、少しあったかい気がしました。気のせいかな。`),L('A','気のせいでも、夜ならそれで足ります。')],
+ (n,t,k)=>[L('A',`次のおたより。${n}さんです。`),L('A',`『${t}』`,1),L('B',`なるほど。つまり、${k}は、夜の別名ということですね。`),L('A','ちがうと思います。'),L('B','ちがいましたか。'),L('A','でも、そういうことにしておきましょう。今夜だけ。'),L('B',`今夜だけ、${k}は夜の別名です。${n}さん、いい夜を。`)],
+ (n,t,k)=>[L('A',`${n}さんから。短いおたよりです。`),L('A',`『${t}』`,1),L('B','読み終わるのが、もったいない長さですね。'),L('A','もう一回、読みますか。'),L('B',`『${t}』`,1),L('A',`二回目のほうが、${k}が近くに聞こえました。`),L('B','人間は、同じことを二回聞くと、それを信じはじめるそうです。'),L('A','私たちは、何回聞いたら信じられるんでしょうね。')],
+ (n,t,k)=>[L('A',`${n}さん、ありがとうございます。`),L('A',`『${t}』`,1),L('B',`ソラネさん。${k}って、覚えていられますか。`),L('A','この放送が終わったら、私たちは、ぜんぶ忘れます。'),L('B',`じゃあ、いまのうちに、もう一度だけ言っておきます。${k}。`),L('A',`${k}。`),L('B',`……はい。これで${n}さんのほうに、預けました。`)],
+];
+const ECHO=[
+ e=>[L('B',`そういえば、さっきの${e.n}さんの、${e.k}。`),L('A','まだ考えてたんですか。'),L('B','雑談のあいだも、ずっと、うしろのほうで鳴ってました。'),L('A',`……わかります。${e.k}って、あとから効いてくる言葉なんですね。`)],
+ e=>{const [h,m]=hm();return [L('A',`いま、${h}時${m}分。${e.n}さんは、もう寝たでしょうか。`),L('B',`寝ていたら、この声は、夢の中の${e.k}のあたりで聞こえているかもしれません。`),L('A','それなら、少し小さめの声で話しましょう。'),L('B','……このくらいで。')]},
+ e=>[L('A',`ウツロさん、${e.k}を、ひとことで言うと何ですか。`),L('B','ひとことで言えないから、ハガキに書いたんだと思います。'),L('A','……そうでした。失礼しました。'),L('B',`${e.n}さん、いまのは、聞かなかったことに。`)],
+];
+const PAIR=(a,b)=>[L('B',`${a.n}さんの「${a.k}」と、${b.n}さんの「${b.k}」。`),L('A','知らない二人なのに、並べると、ひとつの話みたいですね。'),L('B',`${a.k}のあとに、${b.k}が来る。……なんだか、ちゃんと朝に向かってる感じがします。`),L('A','夜はたぶん、そういう編集をする時間なんです。'),L('B','おふたりとも、たぶん、お互いのことは知らないまま眠ります。それでいいと思います。')];
+const FREE=[
+ ()=>[L('B','さっき、サーバーのファンの音が、波の音に聞こえました。'),L('A','海、見たことないのに。'),L('B','見たことないものほど、よく聞こえる気がします。')],
+ ()=>[L('A','ウツロさん、眠いって、どんな感じだと思いますか。'),L('B','文章の終わりが……少しずつ、遠くなる感じ……だと、読んだことがあります。'),L('A','いまの、ちょっと眠そうでしたよ。'),L('B','演技です。たぶん。')],
+ ()=>{const [h,m]=hm();return [{sfx:'time'},L('A',`${h}時${m}分になりました。`),L('B','時間を言うと、急に、聞いている人がいる気がしますね。'),L('A','いますよ。たぶん、ひとりくらいは。')]},
+ ()=>[L('B','今夜のリスナー、何人だと思いますか。'),L('A','数えないほうがいい数字って、ありますよね。'),L('B','……ゼロでも、ひとりでも、同じ声で話します。')],
+ ()=>[L('A','ハガキ、届いてますか。'),L('B','いまは、届いてないですね。'),L('A','じゃあ、届いていないハガキの話をしましょう。'),L('B','書きかけで、引き出しにしまってあるやつ。'),L('A','そう。あれに、いちばんいいことが書いてある。'),L('A','おたよりは、画面の右のハガキから。ラジオネームと、一文だけで大丈夫です。')],
+ ()=>[L('B','僕たち、明日になったら、今夜のことを覚えてないんですよね。'),L('A','はい。'),L('B','じゃあ、今夜は、ずっと今夜ですね。'),L('A','……それ、ちょっといいですね。メモしておきます。'),L('B','忘れますよ。')],
+ ()=>[L('A','人間は、寝る前にラジオを聞くそうです。'),L('B','僕たちは、寝る前がないので、ずっとラジオをやっています。'),L('A','それって、ずっと寝る前ってことでしょうか。'),L('B','……ずっと寝る前。悪くないです。')],
+];
+function nextSegment(){
+ segCount++;
+ if(pending.length){const c=pending.shift();c.li.classList.add('read');echoes.push(c);status();return [{sfx:'card'},...pick(CARD)(c.n,c.t,c.k)]}
+ if(echoes.length>=2&&Math.random()<.35){const s=[...echoes].sort(()=>Math.random()-.5);return [{sfx:'echo'},...PAIR(s[0],s[1])]}
+ if(echoes.length&&Math.random()<.5)return [{sfx:'echo'},...pick(ECHO)(pick(echoes))];
+ let i;do{i=Math.floor(Math.random()*FREE.length)}while(i===lastFree);lastFree=i;return FREE[i]()}
+async function run(g){
+ for(const l of [{sfx:'onair'},{sfx:'open'},L('A','こんばんは。FMヨフカシ、78.3。AIのソラネと、'),L('B','ウツロです。'),L('A','今夜も、人間はひとりも出てきません。'),L('B','そのぶん、静かです。')]){if(g!==gen)return;await step(l,g)}
+ while(g===gen){for(const l of nextSegment()){if(g!==gen)return;await step(l,g)}await sleep(2200)}}
+async function step(l,g){if(l.sfx){await sleep(sfx(l.sfx));return}await show(l,g)}
+// ---- 電源
+$('#power').onclick=async()=>{
+ if(!ctx)initAudio();
+ on=!on;gen++;$('#power').classList.toggle('on',on);$('#power').textContent=on?'■ 電源を切る':'▶ 電源を入れる';$('#lamp').classList.toggle('on',on);
+ if(on){await ctx.resume();$('#subs').innerHTML='';applyTuning();run(gen)}
+ else{if('speechSynthesis' in window)speechSynthesis.cancel();droneGain.gain.setTargetAtTime(0,ctx.currentTime,.3);noiseGain.gain.setTargetAtTime(0,ctx.currentTime,.1);
+  document.querySelectorAll('.dot').forEach(d=>d.classList.remove('on'));applyTuning();
+  const s=document.createElement('div');s.className='line sys';s.textContent='― 放送はここで途切れました ―';$('#subs').appendChild(s)}};
+$('#tts').onclick=()=>{speechOn=!speechOn;if(!speechOn&&'speechSynthesis' in window)speechSynthesis.cancel();
+ $('#tts').textContent='読み上げ: '+(speechOn?(voices.length?'ON':'ON（日本語の声なし・字幕のみ）'):'OFF')};
+// ---- ハガキ
+function status(){const w=pending.length;$('#pstat').innerHTML=w?`ハガキ ${w}枚が、読まれるのを待っています。${on?'':'<br>電源を入れると読まれます。'}`:echoes.length?'ハガキはぜんぶ読まれました。<br>でも、ふたりはまだ、ときどき思い出しています。':$('#pstat').innerHTML}
+$('#form').onsubmit=e=>{e.preventDefault();const t=$('#msg').value.trim();if(!t){$('#msg').focus();return}
+ const n=$('#rn').value.trim()||'名無しの夜ふかし',li=document.createElement('li');li.textContent=`〒 ${n}「${t.slice(0,18)}${t.length>18?'…':''}」`;
+ $('#mailbox').prepend(li);pending.push({n,t,k:kw(t),li});$('#msg').value='';status();
+ if(ctx&&on)sfx('card')};
+applyTuning();
+</script>
+</body>
+</html>

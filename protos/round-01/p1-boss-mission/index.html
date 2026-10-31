@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI上司の指令書 — 高知支店</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1724;--side:#141f31;--line:#26344d;--ink:#e8edf5;--dim:#8796ad;--red:#e2423a;--gold:#f2b134;--boss:#1d2a41;--me:#2f6fe0}
+html,body{height:100%}
+body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+.app{display:grid;grid-template-columns:220px 1fr 300px;height:100vh}
+/* 左: チャンネル */
+.side{background:var(--side);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:6px}
+.logo{font-weight:800;font-size:15px;letter-spacing:.04em;margin-bottom:14px}
+.logo small{display:block;color:var(--dim);font-weight:400;font-size:11px;margin-top:2px}
+.ch{padding:7px 10px;border-radius:6px;color:var(--dim);font-size:13px}
+.ch.on{background:#22314d;color:var(--ink);font-weight:700}
+.ch .lock{float:right;font-size:11px}
+.side .me{margin-top:auto;font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding-top:12px}
+.side .me b{color:var(--ink)}
+/* 中央: チャット */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line)}
+.top .av{width:38px;height:38px;font-size:22px}
+.top h1{font-size:15px}
+.top p{font-size:12px;color:var(--dim)}
+.rec{margin-left:auto;font-size:11px;color:var(--red);font-weight:700;letter-spacing:.1em;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.mtimer{display:none}
+.log{flex:1;overflow-y:auto;padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:10px;align-items:flex-end;max-width:78%;animation:pop .25s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+.row.me{align-self:flex-end;flex-direction:row-reverse}
+.av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3a5a8c,#1b2d4d);display:grid;place-items:center;font-size:19px;flex:none;border:2px solid var(--gold)}
+.bub{background:var(--boss);border:1px solid var(--line);padding:11px 14px;border-radius:14px 14px 14px 4px;font-size:14px;line-height:1.7}
+.me .bub{background:var(--me);border-color:var(--me);border-radius:14px 14px 4px 14px}
+.bub b{color:var(--gold)}
+.meta{font-size:10px;color:var(--dim);white-space:nowrap}
+.mission{background:#fff8e6;color:#2a1d05;border:none;border-left:6px solid var(--red);border-radius:6px;position:relative;padding:14px 16px 14px 18px}
+.mission .tag{display:inline-block;background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;letter-spacing:.15em;margin-bottom:6px}
+.mission b{color:#b3261e}
+.mission .dl{display:block;margin-top:6px;font-size:12px;color:#7a5a12;font-weight:700}
+.stamp{display:inline-grid;place-items:center;width:46px;height:46px;border:3px solid var(--red);color:var(--red);border-radius:50%;font-size:24px;font-weight:900;transform:rotate(-12deg);margin-right:8px;vertical-align:middle;background:#fff1}
+.typing{color:var(--dim);font-size:12px;padding:0 20px 6px;height:20px}
+.chips{display:flex;gap:8px;padding:0 20px 8px;flex-wrap:wrap}
+.chip{background:none;border:1px solid var(--line);color:var(--dim);border-radius:99px;padding:5px 12px;font-size:12px;cursor:pointer}
+.chip:hover{color:var(--ink);border-color:var(--dim)}
+.input{display:flex;gap:10px;padding:12px 20px 18px;border-top:1px solid var(--line)}
+.input input{flex:1;background:#0b1220;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:13px 14px;font-size:15px;outline:none}
+.input input:focus{border-color:var(--me)}
+.btn{background:var(--red);color:#fff;border:none;border-radius:10px;padding:0 22px;font-size:15px;font-weight:800;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:default}
+.start{align-self:center;margin:20px auto;padding:16px 40px;font-size:18px;border-radius:12px;box-shadow:0 6px 0 #8d1f19;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{transform:scale(1.04)}}
+/* 右: 勤務状況 */
+.panel{background:var(--side);border-left:1px solid var(--line);padding:20px 18px;display:flex;flex-direction:column;gap:18px}
+.panel h2{font-size:11px;color:var(--dim);letter-spacing:.2em;font-weight:700}
+.clock{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1}
+.clock.warn{color:var(--red);animation:blink .5s infinite}
+.bar{height:8px;background:#0b1220;border-radius:99px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:100%;background:var(--gold);transition:width 1s linear,background .3s}
+.mood{display:flex;align-items:center;gap:10px;font-size:13px}
+.mood .face{font-size:30px}
+.grades{display:flex;gap:8px;flex-wrap:wrap}
+.g{width:44px;height:44px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-weight:900;font-size:20px;color:var(--dim)}
+.g.S{border:2px solid var(--gold);color:var(--gold)}.g.A{border:2px solid #4ccf8a;color:#4ccf8a}.g.B{border:2px solid #6aa3ff;color:#6aa3ff}.g.C{border:2px solid #b18cff;color:#b18cff}.g.D{border:2px solid var(--red);color:var(--red)}
+.place{font-size:13px;line-height:1.7;color:var(--dim)}
+.place b{color:var(--ink);font-size:16px}
+/* 評定 */
+.ov{position:fixed;inset:0;background:#000b;display:none;place-items:center;z-index:9}
+.ov.on{display:grid}
+.card{background:#fffdf6;color:#222;width:min(440px,92vw);padding:28px 30px;border-radius:6px;box-shadow:0 20px 60px #000a;position:relative;animation:pop .4s}
+.card h3{font-size:20px;border-bottom:3px double #222;padding-bottom:8px;margin-bottom:14px;letter-spacing:.2em;text-align:center}
+.card table{width:100%;font-size:13px;border-collapse:collapse;margin-bottom:14px}
+.card td{padding:5px 2px;border-bottom:1px solid #ddd}
+.card td:last-child{text-align:right;font-weight:900}
+.big{position:absolute;right:22px;top:58px;width:92px;height:92px;border:5px solid var(--red);color:var(--red);border-radius:50%;display:grid;place-items:center;font-size:52px;font-weight:900;transform:rotate(-14deg);opacity:.9}
+.card p{font-size:14px;line-height:1.8}
+.card .btn{width:100%;padding:12px;margin-top:16px}
+@media(max-width:900px){
+ .app{grid-template-columns:1fr}.side,.panel{display:none}
+ .mtimer{display:block;margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;font-size:20px}
+ .rec{display:none}.row{max-width:92%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo">TOSA-Work<small>株式会社 土佐逆転商事 高知支店</small></div>
+    <div class="ch on"># 本日の指令</div>
+    <div class="ch"># 査定結果 <span class="lock">🔒</span></div>
+    <div class="ch"># 反省文提出 <span class="lock">🔒</span></div>
+    <div class="ch"># 有給申請 <span class="lock">🔒</span></div>
+    <div class="ch"># 雑談 <span class="lock">廃止</span></div>
+    <div class="me">あなた: <b>部下 #0042</b><br>上司: <b>カツオ部長（AI）</b><br>雇用形態: 人間</div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div class="av">🐟</div>
+      <div><h1>カツオ部長（AI）</h1><p>あなたの直属の上司 / 高知市内を常時監視中</p></div>
+      <div class="rec">● 監視中</div>
+      <div class="mtimer" id="mtimer">--</div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="typing" id="typing"></div>
+    <div class="chips" id="chips"></div>
+    <form class="input" id="form">
+      <input id="inp" autocomplete="off" placeholder="出勤ボタンを押してください" disabled>
+      <button class="btn" id="send" disabled>報告</button>
+    </form>
+  </main>
+
+  <aside class="panel">
+    <div><h2>報告締切まで</h2><div class="clock" id="clock">--</div><div class="bar"><i id="bar"></i></div></div>
+    <div><h2>現在の任地</h2><div class="place" id="place">出勤前</div></div>
+    <div><h2>部長の機嫌</h2><div class="mood"><span class="face" id="face">😐</span><div style="flex:1"><div class="bar"><i id="moodbar" style="width:50%;background:#6aa3ff"></i></div></div></div></div>
+    <div><h2>本日の査定</h2><div class="grades" id="grades"></div></div>
+  </aside>
+</div>
+
+<div class="ov" id="ov"><div class="card" id="card"></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LIMIT=40, ROUNDS=4;
+const KAN='〇一二三四五六七八九';
+function num(t){
+  t=t.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const m=t.match(/\d+(\.\d+)?/); if(m) return parseFloat(m[0]);
+  const k=t.match(/[一二三四五六七八九十]+/); if(!k) return null;
+  let s=k[0],v=0; if(s.includes('十')){const[a,b]=s.split('十');v=(a?KAN.indexOf(a):1)*10+(b?KAN.indexOf(b):0);}else v=KAN.indexOf(s[0]);
+  return v<0?null:v;
+}
+const clip=(t,n=16)=>t.length>n?t.slice(0,n)+'…':t;
+
+const MISSIONS=[
+ {place:'ひろめ市場',icon:'🐟',dl:'14:30',
+  text:'ひろめ市場にてカツオのタタキを1皿確保せよ。<b>塩で</b>。証拠として<b>皿の上の玉ねぎの枚数</b>を報告すること。',
+  judge(t,n){let s=0,c=[];
+   if(/タレ|たれ/.test(t)){s-=2;c.push('「タレ」と書いてあるな。指令は<b>塩</b>だ。この件は人事に共有する。');}
+   else if(/塩/.test(t)){s+=1;c.push('塩、確認した。');}
+   if(n==null){s-=1;c.push('玉ねぎの枚数が無い。今日の君の仕事は玉ねぎを数えることだった。');}
+   else if(n<5){s+=1;c.push(`「${n}枚」。少ない。店の問題か、君の数え方の問題だ。後者だと思っている。`);}
+   else if(n>30){c.push(`「${n}枚」？それは玉ねぎの上にカツオが乗っている状態だ。写真で再提出。`);}
+   else{s+=2;c.push(`「${n}枚」。妥当だ。昨日の部下は${n+3}枚と報告した。どちらかが嘘をついている。`);}
+   return[s,c];}},
+ {place:'はりまや橋',icon:'🌉',dl:'14:55',
+  text:'はりまや橋を<b>端から端まで歩き</b>、その<b>歩数</b>を報告せよ。なお「がっかり」という単語の使用は禁ずる。',
+  judge(t,n){let s=0,c=[];
+   if(/がっかり|ガッカリ/.test(t)){s-=2;c.push('「がっかり」と書いたな。禁止だと言った。橋が聞いている。');}
+   if(n==null){s-=1;c.push('歩数が無い。歩いたのか？本当に？');}
+   else if(n<8){s+=1;c.push(`「${n}歩」。君は巨人か。……いや、正直な数字かもしれない。それがはりまや橋だ。`);}
+   else if(n>80){c.push(`「${n}歩」。それは別の橋だ。迷子の可能性を記録しておく。`);}
+   else{s+=2;c.push(`「${n}歩」。想像より短かっただろう。だが口には出すな。`);}
+   return[s,c];}},
+ {place:'日曜市',icon:'🍠',dl:'15:20',
+  text:'日曜市で<b>芋天を1個</b>購入し、<b>衣の厚さをmm単位</b>で計測、報告せよ。食べるのは計測の後とする。',
+  judge(t,n){let s=0,c=[];
+   if(/食べ|うま|美味|おいし|熱/.test(t)){c.push('感想は求めていない。……だが、わかる。');s+=.5;}
+   if(/mm|ミリ|㎜/.test(t)){s+=1;}else if(n!=null){c.push('単位が無い。mm と書け。センチだったら大事故だ。');}
+   if(n==null){s-=1;c.push('数字が無い。芋天は消えたのか？君の胃の中に？');}
+   else if(n>10){c.push(`「${n}」。それはもう衣を食べる料理だ。店の名前を報告せよ（個人的に）。`);}
+   else{s+=2;c.push(`「${n}mm」。記録した。芋天データベースに登録しておく。`);}
+   return[s,c];}},
+ {place:'路面電車 はりまや橋電停',icon:'🚋',dl:'15:45',
+  text:'次に来る<b>路面電車の車体の色</b>と、運転士が<b>指差し確認した回数</b>を報告せよ。乗車は許可していない。',
+  judge(t,n){let s=0,c=[];const col=t.match(/赤|青|緑|黄|白|黒|オレンジ|茶|ピンク|水色|紫|銀/);
+   if(col){s+=1;c.push(`「${col[0]}」の車両、記録した。`);}else{s-=1;c.push('色の報告が無い。君の世界はモノクロか。');}
+   if(/乗っ|乗車/.test(t)){s-=1;c.push('乗ったな？許可していない。運賃は経費で落ちない。');}
+   if(n==null){c.push('指差しの回数も無い。安全確認を確認していない。');}
+   else if(n>10){s+=1;c.push(`指差し${n}回。安全意識が高すぎる運転士だ。君より先に昇進させる。`);}
+   else{s+=1;c.push(`指差し${n}回。標準的だ。君もあれくらい確認してから報告しろ。`);}
+   return[s,c];}},
+ {place:'桂浜 龍馬像前',icon:'🌊',dl:'16:10',
+  text:'桂浜の龍馬像に<b>一礼</b>し、太平洋に向かって<b>本日の反省を一行</b>述べよ。述べた内容をそのまま報告すること。',
+  judge(t,n){let s=0,c=[];
+   if(t.length<8){s-=1;c.push(`「${t}」。短い。太平洋に失礼だ。`);}
+   else{s+=1;c.push(`「${clip(t,22)}」。……龍馬は何も言わなかっただろう。それが答えだ。`);}
+   if(/反省|申し訳|次は|明日|改善/.test(t)){s+=1.5;c.push('反省の型ができている。型だけは評価する。');}
+   if(/部長|上司|AI/.test(t)){s+=.5;c.push('反省文に私の名前を入れたな。悪くない判断だ。');}
+   return[s,c];}},
+ {place:'帯屋町アーケード',icon:'🏮',dl:'16:40',
+  text:'帯屋町を5分歩き、すれ違った人のうち<b>今夜「おきゃく」（宴会）に行きそうな人数</b>を推定、報告せよ。根拠も一言添えること。',
+  judge(t,n){let s=0,c=[];
+   if(n==null){s-=1;c.push('人数が無い。推定は君の仕事だ。私は推定しない。AIなのに。');}
+   else if(n>40){s+=1;c.push(`「${n}人」。多い。だが高知ならあり得る。乾杯の準備をしておけ。`);}
+   else if(n===0){c.push('0人？高知で？その分析は修正が必要だ。');}
+   else{s+=1.5;c.push(`「${n}人」。妥当な推定だ。`);}
+   if(t.replace(/[0-9０-９人]/g,'').length>6){s+=1;c.push('根拠付きの報告、受理する。');}else c.push('根拠が無い。勘で仕事をするな。');
+   return[s,c];}},
+];
+
+let order=[],idx=0,timer=null,left=LIMIT,mood=50,results=[],excuse=0,flatter=0,waiting=false,t0=0,times=[];
+
+function now(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function add(html,who='boss',cls=''){
+  const r=document.createElement('div');r.className='row '+(who==='me'?'me':'');
+  r.innerHTML=(who==='me'?'':'<div class="av">🐟</div>')+`<div class="bub ${cls}">${html}</div><div class="meta">${now()}</div>`;
+  $('log').appendChild(r);$('log').scrollTop=1e9;return r;
+}
+function sys(el){$('log').appendChild(el);$('log').scrollTop=1e9;}
+function bossSay(list,cb,base=700){
+  let i=0;const next=()=>{
+    if(i>=list.length){$('typing').textContent='';cb&&cb();return;}
+    $('typing').textContent='カツオ部長が入力中…';
+    setTimeout(()=>{add(list[i].h,'boss',list[i].c||'');i++;next();},base+Math.random()*600+list[i].h.length*8);
+  };next();
+}
+function setMood(d){
+  mood=Math.max(0,Math.min(100,mood+d));
+  $('moodbar').style.width=mood+'%';
+  $('moodbar').style.background=mood>70?'#4ccf8a':mood>40?'#6aa3ff':mood>20?'#f2b134':'#e2423a';
+  $('face').textContent=mood>80?'😌':mood>60?'🙂':mood>40?'😐':mood>20?'😠':'🤬';
+}
+function drawGrades(){$('grades').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<div class="g ${results[i]?.g||''}">${results[i]?.g||''}</div>`).join('');}
+function setInput(on){$('inp').disabled=!on;$('send').disabled=!on;waiting=on;if(on){$('inp').placeholder='報告を入力（Enterで送信）';$('inp').focus();}}
+function tick(){
+  left--;const s=Math.max(0,left);
+  const txt='00:'+String(s).padStart(2,'0');$('clock').textContent=txt;$('mtimer').textContent=txt;
+  $('bar').style.width=(s/LIMIT*100)+'%';$('bar').style.background=s<=10?'#e2423a':'#f2b134';
+  $('clock').classList.toggle('warn',s<=10);
+  if(left===15) add(['進捗は？','まだか。','既読はついている。','……。','君の位置情報は動いていないように見えるが。'][Math.floor(Math.random()*5)]);
+  if(left<=0){clearInterval(timer);setInput(false);timeout();}
+}
+function startMission(){
+  const m=order[idx];left=LIMIT+1;
+  $('place').innerHTML=`<b>${m.icon} ${m.place}</b><br>指令 ${idx+1} / ${ROUNDS}・締切 ${m.dl}`;
+  const pre=idx===0?[{h:'では最初の指令だ。'}]:[{h:['次。','休憩は無い。次の指令だ。','間髪入れず次。','よし。君の次の現場だ。'][idx%4]}];
+  bossSay(pre.concat([{h:`<span class="tag">指令 No.${String(idx+1).padStart(3,'0')}</span><br>${m.text}<span class="dl">⏰ ${m.dl}までに報告（残り${LIMIT}秒）</span>`,c:'mission'}]),()=>{
+    t0=Date.now();setInput(true);tick();timer=setInterval(tick,1000);
+  });
+}
+function grade(s){return s>=3.5?'S':s>=2.5?'A':s>=1.5?'B':s>=.5?'C':'D';}
+const GC={S:'見事だ。……今の評価は記録から消しておく。調子に乗るからな。',A:'悪くない。カツオに免じて及第点だ。',B:'可もなく不可もない。B は褒め言葉ではない。',C:'報告の体をなしていない部分がある。',D:'玉ねぎの方がまだ誠実だった。'};
+function finishRound(s,comments){
+  const g=grade(s);results.push({g,place:order[idx].place});drawGrades();
+  setMood({S:18,A:10,B:2,C:-8,D:-16}[g]);
+  const list=comments.map(h=>({h}));
+  list.push({h:`<span class="stamp">${g}</span>${GC[g]}`});
+  bossSay(list,()=>{idx++;idx<ROUNDS?startMission():review();},500);
+}
+function timeout(){
+  $('typing').textContent='';
+  add('時間切れだ。','boss');
+  setTimeout(()=>finishRound(-1,['報告が無い、というのが君の報告か。了解した。']),600);
+}
+function report(t){
+  if(!waiting||!t.trim())return;
+  clearInterval(timer);setInput(false);times.push((Date.now()-t0)/1000);
+  const r=add(t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])),'me');
+  setTimeout(()=>{r.querySelector('.meta').textContent='既読 '+now();},400);
+  const m=order[idx];let [s,c]=m.judge(t,num(t));
+  if(/すみ|すいません|ごめん|申し訳|できませ|無理|忘れ|まだです/.test(t)&&!m.place.includes("桂浜")){excuse++;s-=1;c.unshift(`「${clip(t,14)}」。謝罪は報告ではない。`);}
+  if(/さすが|素晴らし|尊敬|ありがと|部長の/.test(t)){flatter++;s+=.5;c.push('おべっかは評価対象外だ。……ただし記録はした。');}
+  if(/[?？]/.test(t)){s-=.5;c.push('質問は受け付けていない。指令は指令だ。');}
+  if(t.length>70){c.push('長い。結論から書け。私は忙しい（AIだが）。');}
+  if(left>LIMIT*.6){s+=.5;c.push('報告が早い。……早すぎる。本当に行ったのか？');}
+  else if(left<8){s-=.5;c.push('締切ギリギリだ。心臓に悪い（無いが）。');}
+  setTimeout(()=>{$('typing').textContent='カツオ部長が入力中…';setTimeout(()=>{$('typing').textContent='';add('……');finishRound(s,c);},900);},1100);
+}
+function review(){
+  const pts={S:4,A:3,B:2,C:1,D:0};const avg=results.reduce((a,r)=>a+pts[r.g],0)/ROUNDS;
+  const g=avg>=3.3?'S':avg>=2.5?'A':avg>=1.6?'B':avg>=.8?'C':'D';
+  const msg={S:'優秀。明日から君が私の上司だ。……冗談だ。明日も9時に出社しろ。',A:'悪くない勤務だった。昇給を検討する（検討のみ）。',B:'高知の水準では平凡だ。明日はひろめ市場で玉ねぎの数え方から研修する。',C:'明日は7時出社。日曜市の開店準備から見学せよ。',D:'本日の勤務は「散歩」として処理する。'}[g];
+  const avgT=times.length?(times.reduce((a,b)=>a+b,0)/times.length).toFixed(1)+'秒':'—';
+  bossSay([{h:'本日の業務はここまでだ。勤務評定を出す。'}],()=>{
+    $('card').innerHTML=`<h3>本日の勤務評定</h3><div class="big">${g}</div>
+    <table>${results.map((r,i)=>`<tr><td>指令${i+1}　${r.place}</td><td>${r.g}</td></tr>`).join('')}
+    <tr><td>平均報告時間</td><td>${avgT}</td></tr><tr><td>言い訳</td><td>${excuse}回</td></tr><tr><td>おべっか</td><td>${flatter}回</td></tr>
+    <tr><td>部長の機嫌</td><td>${$('face').textContent} ${mood}</td></tr></table>
+    <p><b>部長所見：</b>${msg}</p><p style="font-size:11px;color:#888;margin-top:8px">評定者: カツオ部長（AI）／ 被評定者: 部下 #0042（人間）</p>
+    <button class="btn" onclick="boot()">翌日も出勤する</button>`;
+    $('ov').classList.add('on');
+  });
+}
+function boot(){
+  $('ov').classList.remove('on');$('log').innerHTML='';
+  order=[...MISSIONS].sort(()=>Math.random()-.5).slice(0,ROUNDS);idx=0;results=[];excuse=0;flatter=0;times=[];mood=50;setMood(0);drawGrades();
+  $('clock').textContent='00:'+LIMIT;$('place').textContent='出勤前';
+  add('部下 #0042。本日も高知市内で現場任務にあたってもらう。<br>指令には<b>制限時間</b>がある。報告は<b>数字で</b>。言い訳は査定に響く。');
+  const b=document.createElement('button');b.className='btn start';b.textContent='出勤する（打刻）';
+  b.onclick=()=>{b.remove();add('出勤しました。','me');setTimeout(startMission,400);};
+  sys(b);
+}
+$('form').onsubmit=e=>{e.preventDefault();const v=$('inp').value;$('inp').value='';report(v);};
+$('chips').innerHTML=['すみません、まだです','さすが部長です','玉ねぎ12枚、塩でした'].map(t=>`<button class="chip" type="button">${t}</button>`).join('');
+$('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{if(waiting)report(c.textContent);});
+boot();
+</script>
+</body>
+</html>

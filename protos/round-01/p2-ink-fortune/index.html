@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>インキ占い — 水玉のにじみで明日の仕事運を検版する</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#17191e;--panel:#22252c;--line:#363a44;--txt:#ece8df;--dim:#9a9a9a;--scan:#39ff88;
+    --C:#00a0e9;--M:#e4007f;--Y:#fff100;--K:#231815}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    background-image:linear-gradient(#ffffff06 1px,transparent 1px),linear-gradient(90deg,#ffffff06 1px,transparent 1px);background-size:32px 32px}
+  .app{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:22px;padding:20px 24px;min-height:100vh}
+  .left{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  .bar{width:min(100%,calc((100vh - 110px)*1.5));display:flex;justify-content:space-between;font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--dim)}
+  .bar b{color:var(--scan);font-weight:normal}
+  .sheet{position:relative;width:min(100%,calc((100vh - 110px)*1.5));aspect-ratio:3/2;box-shadow:0 18px 50px #000a,0 0 0 1px #0006;border-radius:2px}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;border-radius:2px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 40px);overflow:auto}
+  h1{font-size:30px;letter-spacing:.08em;line-height:1.1}
+  h1 small{display:block;font-size:12px;letter-spacing:.02em;color:var(--dim);font-weight:normal;margin-top:6px}
+  .how{font-size:13px;line-height:1.6;background:#ffffff0a;border-left:3px solid var(--M);padding:8px 10px}
+  .inks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .ink{border:1px solid var(--line);background:#1a1c21;color:var(--txt);border-radius:8px;padding:8px 2px 6px;cursor:pointer;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .ink i{width:22px;height:22px;border-radius:50%;display:block;box-shadow:inset 0 -3px 6px #0004}
+  .ink.on{border-color:var(--txt);background:#2e323b;transform:translateY(-1px)}
+  .row{display:flex;gap:8px}
+  button.act{flex:1;padding:12px;border-radius:8px;border:none;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit}
+  #scanBtn{background:var(--scan);color:#0b2416}
+  #scanBtn:disabled{background:#3a3f48;color:#777;cursor:not-allowed}
+  #resetBtn{background:#3a3f48;color:var(--txt);flex:0 0 96px}
+  .count{font:12px ui-monospace,Menlo,monospace;color:var(--dim)}
+  .console{background:#0c0f0d;border:1px solid #1f3a2a;border-radius:6px;padding:8px 10px;font:11px/1.55 ui-monospace,Menlo,monospace;color:var(--scan);height:118px;overflow:auto;white-space:pre-wrap}
+  .result{display:none;background:#f6f1e5;color:#222;border-radius:6px;padding:16px 16px 14px;position:relative;animation:pop .5s ease}
+  .result.show{display:block}
+  @keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+  .stamp{position:absolute;right:12px;top:10px;border:2px solid #d0103a;color:#d0103a;font-weight:bold;font-size:12px;padding:3px 7px;transform:rotate(8deg);border-radius:4px;letter-spacing:.1em}
+  .result .lbl{font-size:11px;color:#777;letter-spacing:.1em}
+  .result h2{font-size:26px;margin:2px 0 6px;letter-spacing:.04em}
+  .result .why{font:11px ui-monospace,Menlo,monospace;color:#0a7a45;margin-bottom:8px}
+  .result p{font-size:14px;line-height:1.7}
+  .result .subs{margin-top:10px;font-size:12px;line-height:1.7;border-top:1px dashed #bbb;padding-top:8px}
+  .result .subs b{color:#a0005a}
+  .result .meta{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:#444}
+  @media (max-width:820px){.app{grid-template-columns:1fr;padding:12px}.bar,.sheet{width:100%}.panel{max-height:none}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="left">
+    <div class="bar"><span>INK-FORTUNE PRESS / 菊判 / 4C</span><span id="status"><b>●</b> 本機待機中</span></div>
+    <div class="sheet"><canvas id="cv"></canvas></div>
+  </div>
+  <aside class="panel">
+    <h1>インキ占い<small>水玉のにじみ具合から、明日の仕事運を検版します</small></h1>
+    <div class="how">紙をクリックしてインキを落とす（長押しで大きな水玉）。3滴以上で「検版して占う」。</div>
+    <div class="inks" id="inks"></div>
+    <div class="count" id="count">落としたインキ：0 滴（あと3滴で検版できます）</div>
+    <div class="row"><button class="act" id="scanBtn" disabled>検版して占う</button><button class="act" id="resetBtn">新しい紙</button></div>
+    <div class="result" id="result"></div>
+    <div class="console" id="log">&gt; 検査カメラ 起動
+&gt; 紙をセットしました。インキを落としてください</div>
+  </aside>
+</div>
+<script>
+(() => {
+  const INK = {C:{rgb:[0,160,233],name:"藍（シアン）",a:.62},M:{rgb:[228,0,127],name:"紅（マゼンタ）",a:.6},Y:{rgb:[255,236,0],name:"黄（イエロー）",a:.82},K:{rgb:[35,24,21],name:"墨（スミ）",a:.72}};
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const logEl = document.getElementById('log'), statusEl = document.getElementById('status');
+  const scanBtn = document.getElementById('scanBtn'), resultEl = document.getElementById('result'), countEl = document.getElementById('count');
+  let W = 0, H = 0, dpr = 1, paper = null, drops = [], decor = [], cur = 'C', scan = null, holding = null, seq = 0;
+
+  // インキ選択ボタン
+  const inksEl = document.getElementById('inks');
+  Object.keys(INK).forEach((k, i) => {
+    const b = document.createElement('button'); b.className = 'ink' + (k === cur ? ' on' : ''); b.dataset.k = k;
+    b.innerHTML = `<i style="background:rgb(${INK[k].rgb})"></i>${k} ${INK[k].name.split('（')[0]}<span style="color:#666">[${i+1}]</span>`;
+    b.onclick = () => pick(k); inksEl.appendChild(b);
+  });
+  function pick(k){ cur = k; inksEl.querySelectorAll('.ink').forEach(b => b.classList.toggle('on', b.dataset.k === k)); }
+
+  function log(s){ logEl.textContent += '\n> ' + s; logEl.scrollTop = logEl.scrollHeight; }
+  const trim = () => ({x: W*.07, y: H*.09, w: W*.86, h: H*.80});
+
+  // 紙（繊維・トンボ・カラーバー）をオフスクリーンに描く
+  function makePaper(){
+    paper = document.createElement('canvas'); paper.width = W*dpr; paper.height = H*dpr;
+    const p = paper.getContext('2d'); p.scale(dpr, dpr);
+    p.fillStyle = '#f8f4ea'; p.fillRect(0,0,W,H);
+    const g = p.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,W*.7); g.addColorStop(0,'#fff0'); g.addColorStop(1,'#d9cfb944');
+    p.fillStyle = g; p.fillRect(0,0,W,H);
+    for (let i=0;i<1600;i++){ // 繊維
+      const x=Math.random()*W, y=Math.random()*H, a=Math.random()*Math.PI, l=2+Math.random()*9;
+      p.strokeStyle = `rgba(120,100,70,${Math.random()*.08})`; p.lineWidth=.5;
+      p.beginPath(); p.moveTo(x,y); p.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); p.stroke();
+    }
+    const t = trim(); p.strokeStyle='#333'; p.lineWidth=.8;
+    [[t.x,t.y,-1,-1],[t.x+t.w,t.y,1,-1],[t.x,t.y+t.h,-1,1],[t.x+t.w,t.y+t.h,1,1]].forEach(([x,y,sx,sy])=>{ // トンボ
+      p.beginPath(); p.moveTo(x+sx*6,y); p.lineTo(x+sx*30,y); p.moveTo(x,y+sy*6); p.lineTo(x,y+sy*30); p.stroke();
+      p.beginPath(); p.moveTo(x+sx*6,y-sy*6); p.lineTo(x+sx*30,y-sy*6); p.moveTo(x-sx*6,y+sy*6); p.lineTo(x-sx*6,y+sy*30); p.stroke();
+    });
+    [[W/2,t.y/2],[W/2,H-(H-t.y-t.h)/2]].forEach(([x,y])=>{ // センタートンボ
+      p.beginPath(); p.arc(x,y,7,0,7); p.moveTo(x-14,y); p.lineTo(x+14,y); p.moveTo(x,y-11); p.lineTo(x,y+11); p.stroke();
+    });
+    const sz = Math.max(8, W*.014), by = H-(H-t.y-t.h)/2-sz/2; let bx = t.x+t.w-sz*12; // カラーバー
+    ['C','M','Y','K'].forEach(k=>[1,.5].forEach(a=>{ p.fillStyle=`rgba(${INK[k].rgb},${a})`; p.fillRect(bx,by,sz,sz); bx+=sz*1.4; }));
+    p.fillStyle='#555'; p.font=`${Math.max(9,W*.011)}px ui-monospace,Menlo,monospace`;
+    p.fillText('INK FORTUNE  第1版  検版用  No.'+String(Math.floor(Math.random()*9000+1000)), t.x, t.y/2+4);
+    p.fillText('天', t.x+t.w-14, t.y/2+4);
+  }
+
+  function resize(){
+    const r = cv.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio||1);
+    W = r.width; H = r.height; cv.width = W*dpr; cv.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); makePaper();
+  }
+
+  // 水玉
+  function newDrop(x,y){
+    const harm = []; for (let k=2;k<8;k++) harm.push({k, a:(Math.random()*.05)/(k*.4), ph:Math.random()*7});
+    return {x, y, k:cur, R:.018, t0:performance.now(), harm, sats:[], id:++seq, hold:true};
+  }
+  function addSats(d){
+    const n = Math.floor(d.R*90*Math.random()+1);
+    for (let i=0;i<n;i++){ const a=Math.random()*7, dist=d.R*(1.3+Math.random()*1.6); d.sats.push({dx:Math.cos(a)*dist, dy:Math.sin(a)*dist*1.5, r:d.R*(.06+Math.random()*.16)}); }
+  }
+  const finalR = d => d.R*1.12;
+
+  function blob(cx,cy,r,d,irr){
+    ctx.beginPath();
+    for (let i=0;i<=56;i++){
+      const th = i/56*Math.PI*2; let m = 1; d.harm.forEach(h => m += h.a*irr*Math.sin(h.k*th+h.ph));
+      const x = cx+Math.cos(th)*r*m, y = cy+Math.sin(th)*r*m; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    }
+    ctx.closePath();
+  }
+  function drawDrop(d, now){
+    const age = (now-d.t0)/1000, c = INK[d.k].rgb, a = INK[d.k].a;
+    const grow = 1-Math.exp(-age*2.4), bleed = 1+.12*(1-Math.exp(-age*.45));
+    const r = d.R*W*grow*bleed, irr = .4+.6*Math.min(age/3,1), x = d.x*W, y = d.y*H;
+    if (r < .5) return;
+    blob(x,y,r*1.16,d,irr*1.6); ctx.fillStyle = `rgba(${c},${.13*grow})`; ctx.fill(); // 毛細管のにじみ
+    const g = ctx.createRadialGradient(x-r*.15,y-r*.15,0,x,y,r*1.05);
+    g.addColorStop(0,`rgba(${c},${a*.85})`); g.addColorStop(.72,`rgba(${c},${a*.92})`);
+    g.addColorStop(.93,`rgba(${c},${Math.min(1,a*1.25)})`); g.addColorStop(1,`rgba(${c},${a*.5})`); // コーヒーリング
+    blob(x,y,r,d,irr); ctx.fillStyle = g; ctx.fill();
+    d.sats.forEach(s => { ctx.beginPath(); ctx.arc(x+s.dx*W*grow, y+s.dy*H*grow, s.r*W*grow, 0, 7); ctx.fillStyle=`rgba(${c},${a})`; ctx.fill(); });
+  }
+
+  // 検版（走査）の描画
+  function drawScan(now){
+    const p = Math.min(1,(now-scan.t0)/2200), ly = p*H;
+    if (p < 1){
+      const g = ctx.createLinearGradient(0,ly-60,0,ly); g.addColorStop(0,'rgba(57,255,136,0)'); g.addColorStop(1,'rgba(57,255,136,.22)');
+      ctx.fillStyle = g; ctx.fillRect(0,ly-60,W,60);
+      ctx.fillStyle = '#39ff88'; ctx.fillRect(0,ly-1,W,2);
+    }
+    ctx.font = `${Math.max(10,W*.012)}px ui-monospace,Menlo,monospace`; ctx.lineWidth = 1.2;
+    drops.forEach((d,i) => {
+      const x=d.x*W, y=d.y*H, r=finalR(d)*W;
+      if (y > ly) return;
+      if (!d.seen){ d.seen = true; log(`${d.k}-${String(i+1).padStart(2,'0')} 検出  φ${Math.round(r*2)}px  濃度${(.9+d.R*8).toFixed(2)}  座標(${d.x.toFixed(2)},${d.y.toFixed(2)})`); }
+      ctx.strokeStyle='#18c06a'; ctx.strokeRect(x-r-4,y-r-4,r*2+8,r*2+8);
+      ctx.beginPath(); ctx.moveTo(x-6,y); ctx.lineTo(x+6,y); ctx.moveTo(x,y-6); ctx.lineTo(x,y+6); ctx.stroke();
+      ctx.fillStyle='#0b6e3c'; ctx.fillText(`${d.k}-${String(i+1).padStart(2,'0')}`, x-r-4, y-r-8);
+    });
+    if (p >= 1 && !scan.done){ scan.done = true; finish(); }
+    if (scan.done && scan.res){ // 重心の十字
+      const {cx,cy} = scan.res.m, X = cx*W, Y = cy*H;
+      ctx.setLineDash([5,4]); ctx.strokeStyle='#d0103a'; ctx.beginPath(); ctx.moveTo(W/2,H/2); ctx.lineTo(X,Y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(X,Y,12,0,7); ctx.moveTo(X-20,Y); ctx.lineTo(X+20,Y); ctx.moveTo(X,Y-20); ctx.lineTo(X,Y+20); ctx.stroke();
+      ctx.fillStyle='#d0103a'; ctx.fillText('インキ重心', X+16, Y-14);
+    }
+  }
+
+  function frame(now){
+    ctx.globalCompositeOperation='source-over'; ctx.drawImage(paper,0,0,W,H);
+    if (holding){ holding.R = Math.min(.085, .018 + (now-holding.press)/1000*.045); }
+    ctx.globalCompositeOperation='multiply'; decor.forEach(d => drawDrop(d, now)); drops.forEach(d => drawDrop(d, now));
+    ctx.globalCompositeOperation='source-over';
+    if (scan) drawScan(now);
+    requestAnimationFrame(frame);
+  }
+
+  // 解析 → 占い
+  function analyze(){
+    const P = drops.map(d => ({x:d.x*W, y:d.y*H, r:finalR(d)*W, k:d.k}));
+    let sw=0, sx=0, sy=0; P.forEach(p => { const w=p.r*p.r; sw+=w; sx+=w*p.x; sy+=w*p.y; });
+    const cxp=sx/sw, cyp=sy/sw; let ov=0, al=0;
+    for (let i=0;i<P.length;i++) for (let j=i+1;j<P.length;j++){
+      const dx=P[i].x-P[j].x, dy=P[i].y-P[j].y, dist=Math.hypot(dx,dy);
+      if (dist < (P[i].r+P[j].r)*.9) ov++; else if (Math.abs(dx)<W*.015 || Math.abs(dy)<H*.02) al++;
+    }
+    let sv=0; P.forEach(p => sv += p.r*p.r*((p.x-cxp)**2+(p.y-cyp)**2));
+    const spread = Math.sqrt(sv/sw)/Math.hypot(W,H), t = trim();
+    const edge = P.filter(p => p.x-p.r<t.x || p.x+p.r>t.x+t.w || p.y-p.r<t.y || p.y+p.r>t.y+t.h).length;
+    const cnt = {C:0,M:0,Y:0,K:0}; P.forEach(p => cnt[p.k]++);
+    const cover = P.reduce((s,p)=>s+Math.PI*p.r*p.r,0)/(W*H)*100;
+    return {n:P.length, cx:cxp/W, cy:cyp/H, ov, al, spread, edge, cnt, cover, used:Object.values(cnt).filter(v=>v).length};
+  }
+  function fortune(m){
+    const f = v => v.toFixed(2), c = [];
+    c.push({s:(.5-m.cx)*4, name:'根回し運', why:`重心X=${f(m.cx)}（左寄り）`, t:'インキが左へ寄って刷られています。左は「本番より前」の位置。明日は会議の前の5分の立ち話で、ほぼ決まります。'});
+    c.push({s:(m.cx-.5)*4, name:'先走り運', why:`重心X=${f(m.cx)}（右寄り）`, t:'紙送りより先にインキが走っている相。明日は誰よりも早く出した資料が通ります。誤字だけは校正を。'});
+    c.push({s:(.5-m.cy)*3.5, name:'上流工程運', why:`重心Y=${f(m.cy)}（天寄り）`, t:'インキが天に溜まっています。明日は企画の上流で口を出すと、それがそのまま版になります。'});
+    c.push({s:(m.cy-.5)*3.5, name:'現場運', why:`重心Y=${f(m.cy)}（地寄り）`, t:'地に重心がある刷り上がり。明日は机より現場。手を動かした人が名指しで褒められます。'});
+    c.push({s:m.ov*.42, name:'会議過多の相', why:`重なり ${m.ov} 箇所`, t:`インキが${m.ov}箇所で重なり、色が濁りはじめています。明日は会議が重なる相。どれか1つは議事録を読むだけで足ります。`});
+    c.push({s:m.n>=3?(.11-m.spread)*12:0, name:'一点突破の相', why:`散らばり ${f(m.spread)}（集中）`, t:'網点が一か所に詰まっています。明日は案件を1つに絞って濃く刷り込めば勝てる日。'});
+    c.push({s:(m.spread-.2)*10, name:'八方美人の相', why:`散らばり ${f(m.spread)}（拡散）`, t:'インキが紙じゅうに散っています。明日は頼まれごとが四方から届きます。全部に薄く応えるのが吉。'});
+    c.push({s:m.cnt.K/m.n>=.4?m.cnt.K*.45:0, name:'墨ベタの相', why:`墨版 ${m.cnt.K}/${m.n} 滴`, t:'墨が濃い。締め切りがくっきり出る日です。午後に重めの連絡が1本来ますが、刷り直しは効きます。'});
+    c.push({s:m.edge*.6, name:'裁ち落としの相', why:`仕上がり線の外 ${m.edge} 点`, t:'紙の端、断裁される場所にインキがはみ出しています。明日は誰かの話が途中で切られます。最後まで聞いた人が得をします。'});
+    c.push({s:m.al*.4, name:'見当ピタリの相', why:`見当そろい ${m.al} 組`, t:'点がトンボのように縦横に揃っています。明日は段取り運が最高。資料のページ番号まで揃います。'});
+    c.push({s:m.used===1&&m.n>=3?1.3:0, name:'単色刷りの相', why:`使用版 1色のみ`, t:'1色だけで刷り上がりました。明日は余計な色を足さないこと。いちばん短い返信がいちばん効きます。'});
+    c.push({s:m.used===4?1.2:0, name:'フルカラーの相', why:`CMYK 4版そろい`, t:'4版がそろいました。明日はバラバラな意見が混ざって、なぜか良い色に刷り上がる日です。'});
+    c.push({s:.25, name:'平刷りの相', why:'特記なし', t:'ムラもズレもない、まっとうな刷り上がり。明日は普通に良い日です。それがいちばん難しい。'});
+    return c.sort((a,b)=>b.s-a.s);
+  }
+  function finish(){
+    const m = analyze(), list = fortune(m), main = list[0], subs = list.slice(1,3).filter(x=>x.s>.3);
+    scan.res = {m};
+    const stars = 1 + Math.floor(((m.cx*7.3 + m.cy*13.1 + m.spread*31 + m.ov*.7 + m.n*.37) % 1) * 5);
+    const verdict = ['刷り直し吉','色校もう1回','色校もう1回','本機OK','本機OK・増刷あり'][stars-1];
+    const lucky = ['校正用の赤ペン','ルーペ','色見本帳','インキベラ','トンボ定規','刷り出しの1枚目','ヤレ紙'][(m.n+m.ov+m.al)%7];
+    log(`重心(${m.cx.toFixed(2)},${m.cy.toFixed(2)}) 重なり${m.ov} 散らばり${m.spread.toFixed(2)} 被覆率${m.cover.toFixed(1)}%`);
+    log(`判定：${main.name}`);
+    statusEl.innerHTML = '<b>●</b> 検版完了';
+    resultEl.innerHTML = `<div class="stamp">検版済</div>
+      <div class="lbl">明日の仕事運</div><h2>${main.name}</h2>
+      <div class="why">根拠：${main.why}</div><p>${main.t}</p>
+      ${subs.length ? `<div class="subs">${subs.map(s=>`副版：<b>${s.name}</b>（${s.why}）`).join('<br>')}</div>` : ''}
+      <div class="meta"><span>刷了度 ${'■'.repeat(stars)}${'□'.repeat(5-stars)} ${verdict}</span><span>吉：${lucky}</span></div>`;
+    resultEl.classList.add('show');
+  }
+
+  function updateCount(){
+    const n = drops.length;
+    countEl.textContent = `落としたインキ：${n} 滴` + (n<3 ? `（あと${3-n}滴で検版できます）` : n>=12 ? '（紙がいっぱいです）' : '（検版できます）');
+    scanBtn.disabled = n < 3 || !!scan;
+  }
+
+  cv.addEventListener('pointerdown', e => {
+    if (scan || drops.length >= 12) return;
+    const r = cv.getBoundingClientRect(), d = newDrop((e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height);
+    d.press = performance.now(); holding = d; drops.push(d); cv.setPointerCapture(e.pointerId);
+  });
+  const release = () => {
+    if (!holding) return; addSats(holding); holding.hold = false;
+    log(`${holding.k}版 1滴  φ${Math.round(finalR(holding)*W*2)}px  にじみ中…`); holding = null; updateCount();
+  };
+  cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+
+  scanBtn.onclick = () => {
+    if (drops.length < 3 || scan) return;
+    scan = {t0:performance.now(), done:false}; statusEl.innerHTML = '<b>●</b> 検査カメラ走査中…';
+    log('検版開始 ── 走査線 1200dpi で読み取ります'); updateCount();
+  };
+  document.getElementById('resetBtn').onclick = () => {
+    drops = []; decor = []; scan = null; holding = null; resultEl.classList.remove('show'); makePaper();
+    statusEl.innerHTML = '<b>●</b> 本機待機中'; log('新しい紙をセットしました'); updateCount();
+  };
+  window.addEventListener('keydown', e => {
+    const k = {1:'C',2:'M',3:'Y',4:'K'}[e.key]; if (k) pick(k);
+    if (e.key === 'Enter') scanBtn.click();
+  });
+  window.addEventListener('resize', resize);
+
+  resize();
+  // 最初の画面がさみしくないよう、紙の隅に試し刷りの1滴
+  const demo = newDrop(.86,.2); demo.k='M'; demo.R=.02; demo.hold=false; demo.t0-=4000; addSats(demo); decor.push(demo);
+  updateCount(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
